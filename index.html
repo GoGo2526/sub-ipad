@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>觀塘官立小學(秀明道) 平板電腦借用系統</title>
+  
+  <!-- 引入 Tailwind CSS 進行版面排版 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 設定模組引入對應表 (Import Map) 以支援 React 及圖示庫 -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.294.0"
+      }
+    }
+  </script>
+  
+  <!-- 引入 Babel 以在瀏覽器中即時解析 React JSX 語法 -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+  
+  <!-- React 應用程式掛載點 -->
+  <div id="root"></div>
+
+  <!-- 系統核心邏輯 -->
+  <script type="text/babel" data-type="module">
+    import React, { useState } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import { Calendar, ClipboardList, MonitorSmartphone, AlertCircle, CheckCircle2, Truck, List, Info, GripVertical } from 'lucide-react';
+
+    // --- 常數設定 ---
+    const DAYS = ['星期一', '星期二', '星期三', '星期四', '星期五'];
+    const PERIODS = [
+      { id: 1, name: '第1節', time: '8:35 - 9:10' },
+      { id: 2, name: '第2節', time: '9:10 - 9:45' },
+      { id: 'recess1', name: '小息', time: '9:45 - 10:05', isBreak: true },
+      { id: 3, name: '第3節', time: '10:05 - 10:40' },
+      { id: 4, name: '第4節', time: '10:40 - 11:15' },
+      { id: 'recess2', name: '小休', time: '11:15 - 11:25', isBreak: true },
+      { id: 5, name: '第5節', time: '11:25 - 12:00' },
+      { id: 6, name: '第6節', time: '12:00 - 12:35' },
+      { id: 'lunch', name: '午膳', time: '12:35 - 1:35', isBreak: true },
+      { id: 'lunch_rest', name: '午息', time: '', isBreak: true },
+      { id: 7, name: '第7節', time: '1:35 - 2:10' },
+      { id: 8, name: '第8節', time: '2:10 - 2:45' },
+      { id: 9, name: '第9節', time: '2:45 - 3:15' },
+    ];
+
+    const BLACKOUT_PERIODS = {
+      '星期一': { 9: '導修' },
+      '星期二': { 8: '綜合課', 9: '綜合課' },
+      '星期三': { 8: '生教課', 9: '導修' },
+      '星期四': { 9: '導修' },
+      '星期五': { 7: '導修', 8: '課外活動', 9: '課外活動' },
+    };
+
+    // --- 下拉選單資料 ---
+    const TEACHERS = ["張", "何", "李", "潘", "黎", "譚", "樊", "文", "鄧", "羅", "梁", "黃", "蔡", "伍", "袁", "皓", "和", "輝", "麗", "周", "董", "龍", "榗", "秋", "桂", "靜", "麥", "欣", "卓", "儀", "詠", "艷", "芬", "鄺", "佳", "月", "瀅", "兆", "笑", "冼", "彥", "琳", "劉", "泉", "葉", "恩", "汪", "趙", "楚", "達", "豪", "蓮", "廖", "婉", "慧", "Rachel"];
+    const CLASSES = ["1A", "1B", "1C", "1D", "1E", "2A", "2B", "2C", "2D", "2E", "3A", "3B", "3C", "3D", "3E", "4A", "4B", "4C", "4D", "4E", "5A", "5B", "5C", "5D", "5E", "6A", "6B", "6C", "6D", "6E"];
+
+    // --- 日期輔助工具 ---
+    const getLocalYYYYMMDD = (d) => {
+      const z = n => ('0' + n).slice(-2);
+      return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+    };
+
+    const getISOWeek = (date) => {
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+    };
+
+    const generateCurrentWeekMsg = (dateStr) => {
+      const d = new Date(dateStr || new Date());
+      const dayNum = d.getDay() || 7;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - dayNum + 1);
+      
+      const friday = new Date(monday);
+      friday.setDate(monday.getDate() + 4);
+
+      return `第${getISOWeek(monday)}週: ${monday.getMonth() + 1}月${monday.getDate()}日 至 ${friday.getMonth() + 1}月${friday.getDate()}日`;
+    };
+
+    const generateBookingRangeMsg = () => {
+      const today = new Date();
+      const dayOfWeek = today.getDay() || 7;
+      const nextMonday = new Date(today);
+      nextMonday.setDate(today.getDate() - dayOfWeek + 8); 
+      
+      const nextFriday = new Date(nextMonday);
+      nextFriday.setDate(nextMonday.getDate() + 4); 
+      
+      const weekAfterNextMonday = new Date(nextMonday);
+      weekAfterNextMonday.setDate(nextMonday.getDate() + 7); 
+      
+      const weekAfterNextFriday = new Date(weekAfterNextMonday);
+      weekAfterNextFriday.setDate(weekAfterNextMonday.getDate() + 4); 
+
+      const formatRange = (start, end) => {
+        return `${start.getMonth() + 1}月${start.getDate()}日 至 ${end.getMonth() + 1}月${end.getDate()}日`;
+      };
+
+      return `預約日期：第${getISOWeek(nextMonday)}週: ${formatRange(nextMonday, nextFriday)} 及 第${getISOWeek(weekAfterNextMonday)}週:  ${formatRange(weekAfterNextMonday, weekAfterNextFriday)}`;
+    };
+
+    const initToday = new Date();
+    const initDay = initToday.getDay() || 7; 
+    const initMonday = new Date(initToday);
+    initMonday.setDate(initToday.getDate() - initDay + 1);
+
+    const getDateStrFromMonday = (daysToAdd) => {
+      const d = new Date(initMonday);
+      d.setDate(initMonday.getDate() + daysToAdd);
+      return getLocalYYYYMMDD(d);
+    };
+
+    // --- 初始模擬數據 ---
+    const INITIAL_BOOKINGS = [
+      { id: 'sys1', day: '星期一', period: 9, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '導修' },
+      { id: 'sys2', day: '星期二', period: 8, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '綜合課' },
+      { id: 'sys3', day: '星期二', period: 9, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '綜合課' },
+      { id: 'sys4', day: '星期三', period: 8, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '生教課' },
+      { id: 'sys5', day: '星期三', period: 9, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '導修' },
+      { id: 'sys6', day: '星期四', period: 9, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '導修' },
+      { id: 'sys7', day: '星期五', period: 7, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '導修' },
+      { id: 'sys8', day: '星期五', period: 8, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '課外活動' },
+      { id: 'sys9', day: '星期五', period: 9, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '課外活動' },
+      
+      { id: 101, date: getDateStrFromMonday(0), day: '星期一', period: 2, className: '4C', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 102, date: getDateStrFromMonday(0), day: '星期一', period: 3, className: '6E', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 103, date: getDateStrFromMonday(0), day: '星期一', period: 4, className: '6A', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 104, date: getDateStrFromMonday(0), day: '星期一', period: 5, className: '3D', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 105, date: getDateStrFromMonday(0), day: '星期一', period: 6, className: '4D', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 106, date: getDateStrFromMonday(0), day: '星期一', period: 7, className: '4B', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' },
+
+      { id: 201, date: getDateStrFromMonday(1), day: '星期二', period: 2, className: '6B', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 202, date: getDateStrFromMonday(1), day: '星期二', period: 3, className: '3E', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 203, date: getDateStrFromMonday(1), day: '星期二', period: 4, className: '6C', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 204, date: getDateStrFromMonday(1), day: '星期二', period: 5, className: '4E', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 205, date: getDateStrFromMonday(1), day: '星期二', period: 6, className: '2B', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 206, date: getDateStrFromMonday(1), day: '星期二', period: 7, className: '1E', subject: '科技', teacher: '汪', qty: 35, ta: 'Stephanie', cart: '3號車' },
+
+      { id: 301, date: getDateStrFromMonday(2), day: '星期三', period: 2, className: '2C', subject: '科技', teacher: '譚', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 302, date: getDateStrFromMonday(2), day: '星期三', period: 3, className: '4A', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 303, date: getDateStrFromMonday(2), day: '星期三', period: 4, className: '3A', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 304, date: getDateStrFromMonday(2), day: '星期三', period: 5, className: '5C', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 305, date: getDateStrFromMonday(2), day: '星期三', period: 6, className: '6D', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 306, date: getDateStrFromMonday(2), day: '星期三', period: 7, className: '1B', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '3號車' },
+
+      { id: 401, date: getDateStrFromMonday(3), day: '星期四', period: 2, className: '1A', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 402, date: getDateStrFromMonday(3), day: '星期四', period: 3, className: '2D', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 403, date: getDateStrFromMonday(3), day: '星期四', period: 4, className: '1D', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 404, date: getDateStrFromMonday(3), day: '星期四', period: 6, className: '3C', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 405, date: getDateStrFromMonday(3), day: '星期四', period: 7, className: '5E', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 406, date: getDateStrFromMonday(3), day: '星期四', period: 8, className: '1C', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '3號車' },
+
+      { id: 501, date: getDateStrFromMonday(4), day: '星期五', period: 2, className: '2A', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 502, date: getDateStrFromMonday(4), day: '星期五', period: 3, className: '2E', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 503, date: getDateStrFromMonday(4), day: '星期五', period: 4, className: '5A', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 504, date: getDateStrFromMonday(4), day: '星期五', period: 5, className: '3B', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 505, date: getDateStrFromMonday(4), day: '星期五', period: 6, className: '5D', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' }
+    ];
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('form');
+      const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
+      const [notification, setNotification] = useState({ show: false, message: '', type: '' });
+      
+      const [viewDate, setViewDate] = useState(getLocalYYYYMMDD(new Date()));
+
+      const currentDayIdx = new Date().getDay();
+      const initialFormDay = (currentDayIdx === 0 || currentDayIdx === 6) ? '週末(不可借用)' : DAYS[currentDayIdx - 1];
+
+      const [formData, setFormData] = useState({
+        date: getLocalYYYYMMDD(new Date()),
+        day: initialFormDay,
+        periods: [1],
+        className: '',
+        subject: '',
+        teacher: '',
+        qty: 35,
+        ta: ''
+      });
+
+      const showNotification = (message, type = 'success') => {
+        setNotification({ show: true, message, type });
+        setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+      };
+
+      const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        if (name === 'date') {
+          const d = new Date(value);
+          const dayIdx = d.getDay();
+          let newDay = '週末(不可借用)';
+          if (dayIdx >= 1 && dayIdx <= 5) newDay = DAYS[dayIdx - 1];
+          setFormData(prev => ({ ...prev, date: value, day: newDay }));
+        } else {
+          setFormData(prev => ({ ...prev, [name]: value }));
+        }
+      };
+
+      const handlePeriodToggle = (periodId) => {
+        setFormData(prev => {
+          const periods = prev.periods.includes(periodId)
+            ? prev.periods.filter(p => p !== periodId)
+            : [...prev.periods, periodId].sort((a, b) => a - b);
+          return { ...prev, periods };
+        });
+      };
+
+      const assignCart = (date, day, period, subject, className) => {
+        if (BLACKOUT_PERIODS[day] && BLACKOUT_PERIODS[day][period]) {
+          return { success: false, message: `該時段為 ${BLACKOUT_PERIODS[day][period]}，暫停借用。` };
+        }
+
+        const currentBookings = bookings.filter(b => b.date === date && b.period === period && !b.isSystem);
+        const isGrade1To4Tech = /^[1-4]/.test(className) && subject.includes('科技');
+
+        if (isGrade1To4Tech) {
+          const isCart3Taken = currentBookings.some(b => b.cart === '3號車');
+          if (isCart3Taken) return { success: false, message: '3號車在該時段已被借用。' };
+          return { success: true, cart: '3號車' };
+        } else {
+          const isCart1Taken = currentBookings.some(b => b.cart === '1號車');
+          const isCart2Taken = currentBookings.some(b => b.cart === '2號車');
+
+          if (!isCart1Taken) return { success: true, cart: '1號車' };
+          if (!isCart2Taken) return { success: true, cart: '2號車' };
+          
+          return { success: false, message: '1號及2號車在該時段均已被借出。' };
+        }
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+
+        if (formData.day === '週末(不可借用)') {
+          showNotification('週末不提供借用服務，請重新選擇日期！', 'error');
+          return;
+        }
+
+        if (formData.periods.length === 0) {
+          showNotification('請至少選擇一節課節！', 'error');
+          return;
+        }
+
+        if (!formData.className || !formData.subject || !formData.teacher) {
+          showNotification('請填寫所有必要欄位 (班別、科目、教師代號)！', 'error');
+          return;
+        }
+
+        let newBookings = [];
+        for (let pid of formData.periods) {
+          const assignment = assignCart(formData.date, formData.day, pid, formData.subject, formData.className);
+          if (!assignment.success) {
+            showNotification(`第${pid}節分配失敗：${assignment.message} (已取消全部預約)`, 'error');
+            return; 
+          }
+          newBookings.push({
+            id: Date.now() + pid, 
+            ...formData,
+            period: pid,
+            cart: assignment.cart
+          });
+        }
+
+        setBookings([...bookings, ...newBookings]);
+        showNotification(`成功借用！已為您安排 ${formData.periods.length} 節課堂。`);
+        setFormData(prev => ({ ...prev, className: '', subject: '', teacher: '', ta: '', periods: [1] }));
+      };
+
+      const deleteBooking = (id) => {
+        setBookings(bookings.filter(b => b.id !== id));
+        showNotification('管理員已刪除該借用紀錄。', 'success');
+      };
+
+      const handleDrop = (e, newDate, newPeriod, newDay, targetCart = null) => {
+        e.preventDefault();
+        const bookingId = e.dataTransfer.getData('bookingId');
+        if (!bookingId) return;
+
+        const booking = bookings.find(b => b.id.toString() === bookingId);
+        if (!booking) return;
+
+        if (BLACKOUT_PERIODS[newDay] && BLACKOUT_PERIODS[newDay][newPeriod]) {
+          showNotification('無法移至特別課堂時段！', 'error');
+          return;
+        }
+
+        const cartToCheck = targetCart || booking.cart;
+
+        if (cartToCheck === '3號車') {
+            const isGrade1To4Tech = /^[1-4]/.test(booking.className) && booking.subject.includes('科技');
+            if (!isGrade1To4Tech) {
+                showNotification('調動失敗：3號車僅限 1-4年級科技課 使用！', 'error');
+                return;
+            }
+        }
+
+        const conflict = bookings.some(b => b.date === newDate && b.period === newPeriod && b.cart === cartToCheck && b.id.toString() !== bookingId);
+
+        if (conflict) {
+          showNotification(`該時段的 ${cartToCheck} 已被其他班級佔用！`, 'error');
+          return;
+        }
+
+        setBookings(prev => prev.map(b => 
+          b.id.toString() === bookingId 
+          ? { ...b, date: newDate, day: newDay, period: newPeriod, cart: cartToCheck } 
+          : b
+        ));
+        showNotification('成功調動借用課節位置！', 'success');
+      };
+
+      const getWeekDates = (dateStr) => {
+        const d = new Date(dateStr || new Date());
+        const day = d.getDay() || 7; 
+        const monday = new Date(d);
+        monday.setDate(d.getDate() - day + 1);
+
+        return DAYS.map((name, i) => {
+          const curr = new Date(monday);
+          curr.setDate(monday.getDate() + i);
+          return {
+            name,
+            dateStr: getLocalYYYYMMDD(curr),
+            display: `${curr.getMonth() + 1}月${curr.getDate()}日`
+          };
+        });
+      };
+
+      const renderDateSelector = () => (
+        <div className="mb-6 flex items-center bg-white p-3 rounded-lg border border-gray-200 w-fit shadow-sm">
+          <Calendar className="mr-2 text-blue-600" size={20} />
+          <label className="text-sm font-medium text-gray-700 mr-3">選擇檢視週次：</label>
+          <input 
+            type="date" 
+            value={viewDate} 
+            onChange={e => setViewDate(e.target.value)} 
+            className="p-1.5 border rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-medium bg-gray-50" 
+          />
+          <span className="text-xs text-gray-500 ml-3">(可預約未來兩星期的課室平板電腦)</span>
+        </div>
+      );
+
+      const renderForm = () => {
+        let availabilityMsg = "";
+        let isFull = false;
+        
+        if (formData.day === '週末(不可借用)') {
+          availabilityMsg = "週末不提供借用服務，請選擇星期一至星期五的日期。";
+          isFull = true;
+        } else if (formData.periods.length === 0) {
+          availabilityMsg = "請點選欲借用的課節。";
+        } else {
+          const isGrade1To4Tech = /^[1-4]/.test(formData.className) && formData.subject.includes('科技');
+          let allSuccess = true;
+          let msgs = [];
+
+          formData.periods.forEach(pid => {
+            const isBlackout = BLACKOUT_PERIODS[formData.day] && BLACKOUT_PERIODS[formData.day][pid];
+            if (isBlackout) {
+              msgs.push(`第${pid}節暫停借用`);
+              allSuccess = false; return;
+            }
+            const usedCarts = bookings.filter(b => b.date === formData.date && b.period === pid && !b.isSystem).map(b => b.cart);
+            const hasCart1 = !usedCarts.includes('1號車');
+            const hasCart2 = !usedCarts.includes('2號車');
+            const hasCart3 = !usedCarts.includes('3號車');
+
+            if (isGrade1To4Tech) {
+              if (!hasCart3) { msgs.push(`第${pid}節的3號車已滿`); allSuccess = false; }
+            } else {
+              if (!hasCart1 && !hasCart2) { msgs.push(`第${pid}節已額滿`); allSuccess = false; }
+            }
+          });
+
+          if (!allSuccess) {
+            availabilityMsg = "注意：" + msgs.join("，") + "，無法完成此連堂預約！";
+            isFull = true;
+          } else {
+            if (isGrade1To4Tech) {
+              availabilityMsg = `目前選取的 ${formData.periods.length} 節課 3號車 尚可借用。`;
+            } else {
+              availabilityMsg = `目前選取的 ${formData.periods.length} 節課尚有推車可借用。系統將自動安排。`;
+            }
+          }
+        }
+
+        return (
+          <div className="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center space-x-2 mb-6 pb-4 border-b">
+              <MonitorSmartphone className="text-blue-600" size={24} />
+              <h2 className="text-xl font-bold text-gray-800">平板電腦借用申請</h2>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">借用日期</label>
+                  <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">星期</label>
+                  <input type="text" name="day" value={formData.day} readOnly className="w-full p-2.5 border rounded-lg bg-gray-50 text-gray-500 outline-none cursor-not-allowed" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 block">
+                  課節 <span className="text-blue-600 text-xs ml-1">(若連堂借用，教師可多選連堂節數)</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {PERIODS.filter(p => !p.isBreak).map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handlePeriodToggle(p.id)}
+                      className={`px-3.5 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                        formData.periods.includes(p.id)
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="-mt-1 mb-2">
+                {isFull ? (
+                  <span className="text-red-500 text-sm flex items-center font-medium"><Info size={14} className="mr-1"/> {availabilityMsg}</span>
+                ) : (
+                  <span className="text-green-600 text-sm flex items-center font-medium"><Info size={14} className="mr-1"/> {availabilityMsg}</span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 border-t pt-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">班別</label>
+                  <select name="className" value={formData.className} onChange={handleInputChange} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <option value="" disabled>選擇班別</option>
+                    {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">科目 (例: 科技)</label>
+                  <input type="text" name="subject" value={formData.subject} onChange={handleInputChange} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="輸入科目" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">教師代號</label>
+                  <select name="teacher" value={formData.teacher} onChange={handleInputChange} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                    <option value="" disabled>選擇教師</option>
+                    {TEACHERS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">需要數量 (部)</label>
+                  <input type="number" name="qty" value={formData.qty} onChange={handleInputChange} min="1" max="40" className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">負責TA (選填)</label>
+                  <input type="text" name="ta" value={formData.ta} onChange={handleInputChange} className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="輸入TA代號" />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg flex items-start space-x-3 text-sm text-blue-800">
+                <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold mb-2">借用平板電腦的注意事項：</p>
+                  <ol className="list-decimal pl-4 space-y-1 opacity-90">
+                    <li>設定管理員可刪除或調動教師已設定借用的課堂(以方塊的形式移動借用課節位置)</li>
+                    <li>教師可檢視及預約借用未來兩星期的課室平板電腦.每星期四下午4時會截數.</li>
+                    <li>教師只可瀏覽本星期借用情況,並不設借用.(因已作安排)</li>
+                    <li>供一至四年級課室借出的平板電腦為 1, 2號車。</li>
+                    <li>系統會自動為「1-4年級科技課」指派 3號車,暫不安排借出給其他課堂使用。</li>
+                    <li>如借用節數已被安排，系統會檢視並提示另一架車(1,2號)是否可借用。</li>
+                    <li>星期二/三/五的第8節為特別課堂，暫不開放借用。</li>
+                    <li>如特別活動急需使用平板電腦進行活動,請與「資訊科技及數字教育組」聯絡,本組因應情況盡量安排.</li>
+                  </ol>
+                </div>
+              </div>
+
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex justify-center items-center space-x-2">
+                <CheckCircle2 size={20} />
+                <span>提交借用申請</span>
+              </button>
+            </form>
+          </div>
+        );
+      };
+
+      const renderBookingCard = (booking, themeStyles) => (
+        <div 
+          key={booking.id} 
+          draggable
+          onDragStart={(e) => { e.dataTransfer.setData('bookingId', booking.id); }}
+          className={`p-2 rounded border relative group cursor-move shadow-sm hover:shadow-md transition-shadow min-w-[140px] ${themeStyles.bg} ${themeStyles.border}`}
+          title="管理員：可按住拖曳以調動課節"
+        >
+          <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 bg-gray-800 text-white p-1 rounded-full pointer-events-none transition-opacity z-20">
+            <GripVertical size={12} />
+          </div>
+
+          <div className="font-bold text-sm text-gray-800 leading-tight mb-1 flex items-center flex-wrap gap-x-1">
+            <span>{booking.className}</span>
+            <span>{booking.subject}</span>
+            <span className="text-gray-600 font-medium">({booking.teacher})</span>
+            <span className="text-gray-600 font-medium whitespace-nowrap">({booking.qty}部)</span>
+          </div>
+          
+          <div className="text-xs text-gray-600 mb-1.5">
+            負責TA: {booking.ta || '-'}
+          </div>
+          
+          <div className="pt-1.5 border-t border-black/10 flex justify-between items-center">
+            <div className="text-xs font-bold flex items-center text-gray-700">
+              <Truck size={12} className="mr-1"/> {booking.cart}
+            </div>
+            <button 
+              onClick={() => deleteBooking(booking.id)}
+              className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 hover:bg-red-50 px-1 rounded text-xs font-bold transition-all z-10"
+              title="管理員：點擊刪除"
+            >
+              刪除
+            </button>
+          </div>
+        </div>
+      );
+
+      const renderCartRecords = (cartLabel, themeStyles) => {
+        const weekDates = getWeekDates(viewDate);
+
+        return (
+          <div className={`mb-8 bg-white p-4 rounded-xl shadow-sm border ${themeStyles.border}`}>
+            <h3 className={`text-lg font-bold flex items-center mb-4 ${themeStyles.text}`}>
+                <Truck className="mr-2" size={20} />
+                {cartLabel} 借用紀錄表 <span className="text-sm font-bold text-black ml-2">({generateCurrentWeekMsg(viewDate)})</span>
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border border-black min-w-[850px]">
+                <thead>
+                  <tr>
+                    <th className="border border-black p-2 bg-blue-100 text-center w-36 text-sm text-blue-900 shadow-sm font-bold whitespace-nowrap">
+                      節數/時間
+                    </th>
+                    {weekDates.map(wd => (
+                      <th key={wd.name} className="border border-black p-2 bg-blue-100 text-center w-1/5 text-blue-900">
+                        <div className="font-extrabold text-lg">{wd.display}</div>
+                        <div className="font-bold text-base">{wd.name}</div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {PERIODS.map(period => {
+                    if (period.isBreak) {
+                      const isBlackBold = ['小息', '小休', '午膳', '午息'].includes(period.name);
+                      return (
+                        <tr key={period.id} className="bg-gray-50">
+                          <td className={`border border-black p-1 text-center ${isBlackBold ? 'text-black font-bold text-sm' : 'text-gray-500 text-xs font-medium'}`} colSpan={6}>
+                            {period.name}
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return (
+                      <tr key={period.id}>
+                        <td className="border border-black p-2 bg-gray-200 text-xs font-medium text-center align-middle w-36">
+                          <div className="font-bold text-sm mb-1 text-gray-800 whitespace-nowrap">{period.name}</div>
+                          <div className="text-gray-600 whitespace-nowrap">
+                            <span>{period.time}</span>
+                          </div>
+                        </td>
+                        {weekDates.map(wd => {
+                          const cellBookings = bookings.filter(b => 
+                            (b.date === wd.dateStr && b.period === period.id) ||
+                            (b.isSystem && b.day === wd.name && b.period === period.id)
+                          );
+                          const isBlackout = cellBookings.some(b => b.isSystem);
+
+                          if (isBlackout) {
+                            const remark = cellBookings.find(b => b.isSystem).remark;
+                            return (
+                              <td key={`${wd.name}-${period.id}`} className="border border-black p-2 align-middle text-center bg-gray-400">
+                                <span className="text-black font-extrabold text-[15px]">{remark}</span>
+                              </td>
+                            );
+                          }
+
+                          const booking = cellBookings.find(b => b.cart === cartLabel);
+                          
+                          return (
+                            <td 
+                              key={`${wd.name}-${period.id}`} 
+                              className="border border-black p-2 align-top transition-colors hover:bg-gray-50"
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => handleDrop(e, wd.dateStr, period.id, wd.name, cartLabel)}
+                            >
+                              {booking ? renderBookingCard(booking, themeStyles) : (
+                                <div className="h-full w-full min-h-[60px] flex items-center justify-center text-transparent hover:text-gray-300 border-2 border-transparent hover:border-dashed hover:border-gray-300 rounded transition-all">
+                                  可拖曳至此
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      };
+
+      const renderRecords = () => (
+        <div className="space-y-2">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-4 relative">
+            <h2 className="text-xl font-bold text-gray-800 flex items-center">
+              <List className="mr-2 text-blue-600" size={24} />
+              借用紀錄清單 (按車輛分類時間表)
+            </h2>
+            
+            <div className="inline-block bg-blue-50 text-blue-800 px-3.5 py-2 rounded-md text-sm font-semibold border border-blue-100 shadow-sm mt-3">
+              {generateBookingRangeMsg()}
+            </div>
+          </div>
+          
+          {renderDateSelector()}
+          {renderCartRecords('1號車', { border: 'border-blue-100', text: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' })}
+          {renderCartRecords('2號車', { border: 'border-green-100', text: 'text-green-700', bg: 'bg-green-50 border-green-200' })}
+          {renderCartRecords('3號車', { border: 'border-purple-100', text: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' })}
+        </div>
+      );
+
+      const renderSchedule = () => {
+        const weekDates = getWeekDates(viewDate);
+
+        return (
+          <div>
+            {renderDateSelector()}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                  <Calendar className="mr-2 text-blue-600" size={24} />
+                  每週平板電腦(iPad) 借用總表
+                </h2>
+                <div className="flex space-x-4 text-sm font-medium">
+                  <span className="flex items-center text-blue-700 bg-blue-50 px-2 py-1 rounded"><Truck size={16} className="mr-1"/> 1號車</span>
+                  <span className="flex items-center text-green-700 bg-green-50 px-2 py-1 rounded"><Truck size={16} className="mr-1"/> 2號車</span>
+                  <span className="flex items-center text-purple-700 bg-purple-50 px-2 py-1 rounded"><Truck size={16} className="mr-1"/> 3號車 (1-4年級科技專用)</span>
+                </div>
+              </div>
+
+              <table className="w-full border-collapse border border-black min-w-[850px]">
+                <thead>
+                  <tr>
+                    <th className="border border-black p-2 bg-blue-100 text-center w-36 text-sm text-blue-900 shadow-sm font-bold whitespace-nowrap">
+                      節數/時間
+                    </th>
+                    {weekDates.map(wd => (
+                      <th key={wd.name} className="border border-black p-3 bg-blue-100 text-center w-1/5 text-blue-900">
+                        <div className="font-extrabold text-lg">{wd.display}</div>
+                        <div className="font-bold text-base">{wd.name}</div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {PERIODS.map((period) => {
+                    if (period.isBreak) {
+                      const isBlackBold = ['小息', '小休', '午膳', '午息'].includes(period.name);
+                      return (
+                        <tr key={period.id} className="bg-gray-100">
+                          <td className={`border border-black p-2 text-center ${isBlackBold ? 'text-black font-bold text-sm' : 'text-gray-600 text-sm font-medium'}`} colSpan={6}>
+                            {period.name} {period.time && `(${period.time})`}
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return (
+                      <tr key={period.id}>
+                        <td className="border border-black p-2 bg-gray-200 text-xs font-medium text-center align-middle w-36">
+                          <div className="font-bold text-sm mb-1 text-gray-800 whitespace-nowrap">{period.name}</div>
+                          <div className="text-gray-600 whitespace-nowrap">
+                            <span>{period.time}</span>
+                          </div>
+                        </td>
+                        {weekDates.map(wd => {
+                          const cellBookings = bookings.filter(b => 
+                            (b.date === wd.dateStr && b.period === period.id) ||
+                            (b.isSystem && b.day === wd.name && b.period === period.id)
+                          );
+                          const isBlackout = cellBookings.some(b => b.isSystem);
+
+                          if (isBlackout) {
+                            const remark = cellBookings.find(b => b.isSystem).remark;
+                            return (
+                              <td key={`${wd.name}-${period.id}`} className="border border-black p-3 align-middle text-center bg-gray-400">
+                                <span className="text-black font-extrabold text-base">{remark}</span>
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td 
+                              key={`${wd.name}-${period.id}`} 
+                              className="border border-black p-2 align-top h-24 hover:bg-gray-50 transition-colors"
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => handleDrop(e, wd.dateStr, period.id, wd.name)}
+                            >
+                              <div className="space-y-2">
+                                {cellBookings.map(booking => {
+                                  let themeStyles = { bg: "bg-gray-100", border: "border-gray-200" };
+                                  if (booking.cart === '1號車') themeStyles = { bg: "bg-blue-50", border: "border-blue-200" };
+                                  if (booking.cart === '2號車') themeStyles = { bg: "bg-green-50", border: "border-green-200" };
+                                  if (booking.cart === '3號車') themeStyles = { bg: "bg-purple-50", border: "border-purple-200" };
+
+                                  return renderBookingCard(booking, themeStyles);
+                                })}
+                                {cellBookings.length === 0 && (
+                                  <div className="h-full w-full min-h-[40px] flex items-center justify-center text-transparent hover:text-gray-300 border-2 border-transparent hover:border-dashed hover:border-gray-300 rounded transition-all">
+                                    拖曳至此
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
+          <header className="max-w-5xl mx-auto mb-6 text-center">
+            <h1 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">觀塘官立小學(秀明道) 平板電腦借用系統</h1>
+          </header>
+
+          <div className="max-w-5xl mx-auto mb-6 flex justify-center">
+            <div className="inline-flex bg-gray-200 rounded-lg p-1">
+              <button
+                onClick={() => setActiveTab('form')}
+                className={`flex items-center px-6 py-3 rounded-md font-bold text-lg transition-all ${
+                  activeTab === 'form' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                }`}
+              >
+                <ClipboardList className="w-5 h-5 mr-2" />
+                填寫借用表
+              </button>
+              <button
+                onClick={() => setActiveTab('records')}
+                className={`flex items-center px-6 py-3 rounded-md font-bold text-lg transition-all ${
+                  activeTab === 'records' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                }`}
+              >
+                <List className="w-5 h-5 mr-2" />
+                借用紀錄清單
+              </button>
+              <button
+                onClick={() => setActiveTab('schedule')}
+                className={`flex items-center px-6 py-3 rounded-md font-bold text-lg transition-all ${
+                  activeTab === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                }`}
+              >
+                <Calendar className="w-5 h-5 mr-2" />
+                檢視總表 (TA用)
+              </button>
+            </div>
+          </div>
+
+          {notification.show && (
+            <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center animate-bounce ${
+              notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+            }`}>
+              {notification.type === 'error' ? <AlertCircle className="mr-2" /> : <CheckCircle2 className="mr-2" />}
+              {notification.message}
+            </div>
+          )}
+
+          <div className="max-w-5xl mx-auto">
+            {activeTab === 'form' && renderForm()}
+            {activeTab === 'records' && renderRecords()}
+            {activeTab === 'schedule' && renderSchedule()}
+          </div>
+        </div>
+      );
+    }
+
+    const root = createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -143,39 +143,40 @@
       { id: 'sys8', day: '星期五', period: 8, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '課外活動' },
       { id: 'sys9', day: '星期五', period: 9, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '課外活動' },
       
-      { id: 101, date: getDateStrFromMonday(0), day: '星期一', period: 2, className: '4C', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 102, date: getDateStrFromMonday(0), day: '星期一', period: 3, className: '6E', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 103, date: getDateStrFromMonday(0), day: '星期一', period: 4, className: '6A', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 104, date: getDateStrFromMonday(0), day: '星期一', period: 5, className: '3D', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 105, date: getDateStrFromMonday(0), day: '星期一', period: 6, className: '4D', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 106, date: getDateStrFromMonday(0), day: '星期一', period: 7, className: '4B', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      // 科技課設為 isRecurring: true 每週固定顯示，不依賴特定 date
+      { id: 101, day: '星期一', period: 2, className: '4C', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 102, day: '星期一', period: 3, className: '6E', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 103, day: '星期一', period: 4, className: '6A', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 104, day: '星期一', period: 5, className: '3D', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 105, day: '星期一', period: 6, className: '4D', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 106, day: '星期一', period: 7, className: '4B', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
 
-      { id: 201, date: getDateStrFromMonday(1), day: '星期二', period: 2, className: '6B', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 202, date: getDateStrFromMonday(1), day: '星期二', period: 3, className: '3E', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 203, date: getDateStrFromMonday(1), day: '星期二', period: 4, className: '6C', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 204, date: getDateStrFromMonday(1), day: '星期二', period: 5, className: '4E', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 205, date: getDateStrFromMonday(1), day: '星期二', period: 6, className: '2B', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 206, date: getDateStrFromMonday(1), day: '星期二', period: 7, className: '1E', subject: '科技', teacher: '汪', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 201, day: '星期二', period: 2, className: '6B', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 202, day: '星期二', period: 3, className: '3E', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 203, day: '星期二', period: 4, className: '6C', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 204, day: '星期二', period: 5, className: '4E', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 205, day: '星期二', period: 6, className: '2B', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 206, day: '星期二', period: 7, className: '1E', subject: '科技', teacher: '汪', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true }, // 已改為1號車
 
-      { id: 301, date: getDateStrFromMonday(2), day: '星期三', period: 2, className: '2C', subject: '科技', teacher: '譚', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 302, date: getDateStrFromMonday(2), day: '星期三', period: 3, className: '4A', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 303, date: getDateStrFromMonday(2), day: '星期三', period: 4, className: '3A', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 304, date: getDateStrFromMonday(2), day: '星期三', period: 5, className: '5C', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 305, date: getDateStrFromMonday(2), day: '星期三', period: 6, className: '6D', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 306, date: getDateStrFromMonday(2), day: '星期三', period: 7, className: '1B', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 301, day: '星期三', period: 2, className: '2C', subject: '科技', teacher: '譚', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 302, day: '星期三', period: 3, className: '4A', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 303, day: '星期三', period: 4, className: '3A', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 304, day: '星期三', period: 5, className: '5C', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 305, day: '星期三', period: 6, className: '6D', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 306, day: '星期三', period: 7, className: '1B', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true }, // 已改為1號車
 
-      { id: 401, date: getDateStrFromMonday(3), day: '星期四', period: 2, className: '1A', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 402, date: getDateStrFromMonday(3), day: '星期四', period: 3, className: '2D', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 403, date: getDateStrFromMonday(3), day: '星期四', period: 4, className: '1D', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 404, date: getDateStrFromMonday(3), day: '星期四', period: 6, className: '3C', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 405, date: getDateStrFromMonday(3), day: '星期四', period: 7, className: '5E', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 406, date: getDateStrFromMonday(3), day: '星期四', period: 8, className: '1C', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '3號車' },
+      { id: 401, day: '星期四', period: 2, className: '1A', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true }, // 已改為1號車
+      { id: 402, day: '星期四', period: 3, className: '2D', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 403, day: '星期四', period: 4, className: '1D', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true }, // 已改為1號車
+      { id: 404, day: '星期四', period: 6, className: '3C', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 405, day: '星期四', period: 7, className: '5E', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 406, day: '星期四', period: 8, className: '1C', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true }, // 已改為1號車
 
-      { id: 501, date: getDateStrFromMonday(4), day: '星期五', period: 2, className: '2A', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 502, date: getDateStrFromMonday(4), day: '星期五', period: 3, className: '2E', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 503, date: getDateStrFromMonday(4), day: '星期五', period: 4, className: '5A', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 504, date: getDateStrFromMonday(4), day: '星期五', period: 5, className: '3B', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車' },
-      { id: 505, date: getDateStrFromMonday(4), day: '星期五', period: 6, className: '5D', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車' }
+      { id: 501, day: '星期五', period: 2, className: '2A', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 502, day: '星期五', period: 3, className: '2E', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 503, day: '星期五', period: 4, className: '5A', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 504, day: '星期五', period: 5, className: '3B', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
+      { id: 505, day: '星期五', period: 6, className: '5D', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true }
     ];
 
     function App() {
@@ -231,7 +232,11 @@
           return { success: false, message: `該時段為 ${BLACKOUT_PERIODS[day][period]}，暫停借用。` };
         }
 
-        const currentBookings = bookings.filter(b => b.date === date && b.period === period && !b.isSystem);
+        const currentBookings = bookings.filter(b => 
+          !b.isSystem && 
+          b.period === period && 
+          (b.date === date || (b.isRecurring && b.day === day))
+        );
         const isGrade1To4Tech = /^[1-4]/.test(className) && subject.includes('科技');
 
         if (isGrade1To4Tech) {
@@ -315,7 +320,12 @@
             }
         }
 
-        const conflict = bookings.some(b => b.date === newDate && b.period === newPeriod && b.cart === cartToCheck && b.id.toString() !== bookingId);
+        const conflict = bookings.some(b => 
+          b.period === newPeriod && 
+          b.cart === cartToCheck && 
+          b.id.toString() !== bookingId && 
+          (b.date === newDate || (b.isRecurring && b.day === newDay))
+        );
 
         if (conflict) {
           showNotification(`該時段的 ${cartToCheck} 已被其他班級佔用！`, 'error');
@@ -349,7 +359,7 @@
 
       // --- 渲染卡片組件 ---
       const renderBookingCard = (booking, themeStyles) => {
-        const isFixed = booking.cart === '3號車' && booking.subject.includes('科技');
+        const isFixed = booking.isRecurring || (booking.cart === '3號車' && booking.subject?.includes('科技'));
 
         return (
           <div 
@@ -357,7 +367,7 @@
             draggable={!isFixed}
             onDragStart={(e) => { if(!isFixed) e.dataTransfer.setData('bookingId', booking.id); }}
             className={`p-2 rounded border relative ${!isFixed ? 'group cursor-move hover:shadow-md' : 'cursor-not-allowed opacity-95'} shadow-sm transition-shadow min-w-[140px] ${themeStyles.bg} ${themeStyles.border}`}
-            title={isFixed ? "科技課專用時段，不可調動或修改" : "管理員：可按住拖曳以調動課節"}
+            title={isFixed ? "固定課堂，不可調動或修改" : "管理員：可按住拖曳以調動課節"}
           >
             {!isFixed && (
               <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 bg-gray-800 text-white p-1 rounded-full pointer-events-none transition-opacity z-20">
@@ -373,7 +383,9 @@
             </div>
             
             <div className="text-xs text-gray-600 mb-1.5">
-              負責TA: {booking.ta || '-'}
+              {booking.subject?.includes('科技') && !booking.className?.startsWith('1')
+                ? `負責老師: ${booking.teacher}`
+                : `負責TA: ${booking.ta || '-'}`}
             </div>
             
             <div className="pt-1.5 border-t border-black/10 flex justify-between items-center">
@@ -626,8 +638,9 @@
                         </td>
                         {weekDates.map(wd => {
                           const cellBookings = bookings.filter(b => 
-                            (b.date === wd.dateStr && b.period === period.id) ||
-                            (b.isSystem && b.day === wd.name && b.period === period.id)
+                            (b.isSystem && b.day === wd.name && b.period === period.id) ||
+                            (b.isRecurring && b.day === wd.name && b.period === period.id) ||
+                            (!b.isSystem && !b.isRecurring && b.date === wd.dateStr && b.period === period.id)
                           );
                           const isBlackout = cellBookings.some(b => b.isSystem);
 
@@ -746,8 +759,9 @@
                         </td>
                         {weekDates.map(wd => {
                           const cellBookings = bookings.filter(b => 
-                            (b.date === wd.dateStr && b.period === period.id) ||
-                            (b.isSystem && b.day === wd.name && b.period === period.id)
+                            (b.isSystem && b.day === wd.name && b.period === period.id) ||
+                            (b.isRecurring && b.day === wd.name && b.period === period.id) ||
+                            (!b.isSystem && !b.isRecurring && b.date === wd.dateStr && b.period === period.id)
                           );
                           const isBlackout = cellBookings.some(b => b.isSystem);
 

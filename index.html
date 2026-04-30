@@ -187,6 +187,7 @@
       
       const [isAdmin, setIsAdmin] = useState(false);
       const [showAdminModal, setShowAdminModal] = useState(false);
+      const [unlockTargetId, setUnlockTargetId] = useState(null);
       const [adminPassword, setAdminPassword] = useState('');
 
       const [viewDate, setViewDate] = useState(getLocalYYYYMMDD(new Date()));
@@ -404,7 +405,21 @@
                 </span>
               )}
               {booking.isConfirmed && (
-                <span className="text-green-600 font-bold ml-1">已確認</span>
+                <span 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isAdmin) {
+                      setBookings(bookings.map(b => b.id === booking.id ? { ...b, isConfirmed: false } : b));
+                      showNotification('已解除確認，現在可作修改。', 'success');
+                    } else {
+                      setUnlockTargetId(booking.id);
+                    }
+                  }}
+                  className="text-green-600 font-bold ml-1 cursor-pointer hover:underline"
+                  title="點擊解除確認(需輸入管理員密碼)"
+                >
+                  已確認
+                </span>
               )}
             </div>
             
@@ -867,9 +882,46 @@
         );
       };
 
+      const renderUnlockModal = () => {
+        if (!unlockTargetId) return null;
+        return (
+          <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><Unlock className="mr-2" size={20}/> 解除確認課堂</h3>
+              <p className="text-sm text-gray-600 mb-4">請輸入系統管理員密碼以解鎖此課堂：</p>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if(adminPassword === 'Smr-2526') {
+                  setBookings(bookings.map(b => b.id === unlockTargetId ? { ...b, isConfirmed: false } : b));
+                  setUnlockTargetId(null);
+                  setAdminPassword('');
+                  showNotification('已解除確認，現在可以修改、移動或刪除該課堂。', 'success');
+                } else {
+                  showNotification('密碼錯誤！', 'error');
+                }
+              }}>
+                <input 
+                  type="password" 
+                  value={adminPassword} 
+                  onChange={e => setAdminPassword(e.target.value)} 
+                  className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none mb-4" 
+                  placeholder="請輸入系統管理員密碼" 
+                  autoFocus
+                />
+                <div className="flex justify-end space-x-2">
+                  <button type="button" onClick={() => { setUnlockTargetId(null); setAdminPassword(''); }} className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">取消</button>
+                  <button type="submit" className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors">解鎖</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      };
+
       return (
         <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8 relative">
           {renderAdminModal()}
+          {renderUnlockModal()}
           <header className="max-w-5xl mx-auto mb-6 text-center relative">
             <div className="absolute right-0 top-0 sm:right-2 sm:top-2">
               {isAdmin ? (

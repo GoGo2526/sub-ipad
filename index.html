@@ -297,6 +297,11 @@
         showNotification('管理員已刪除該借用紀錄。', 'success');
       };
 
+      const confirmBooking = (id) => {
+        setBookings(bookings.map(b => b.id === id ? { ...b, isConfirmed: true } : b));
+        showNotification('已確認借用，該課堂現在不能再作改動。', 'success');
+      };
+
       const handleDrop = (e, newDate, newPeriod, newDay, targetCart = null) => {
         e.preventDefault();
         const bookingId = e.dataTransfer.getData('bookingId');
@@ -359,7 +364,7 @@
 
       // --- 渲染卡片組件 ---
       const renderBookingCard = (booking, themeStyles) => {
-        const isFixed = booking.isRecurring || (booking.cart === '3號車' && booking.subject?.includes('科技'));
+        const isFixed = booking.isRecurring || (booking.cart === '3號車' && booking.subject?.includes('科技')) || booking.isConfirmed;
 
         return (
           <div 
@@ -367,7 +372,7 @@
             draggable={!isFixed}
             onDragStart={(e) => { if(!isFixed) e.dataTransfer.setData('bookingId', booking.id); }}
             className={`p-2 rounded border relative ${!isFixed ? 'group cursor-move hover:shadow-md' : 'cursor-not-allowed opacity-95'} shadow-sm transition-shadow min-w-[140px] ${themeStyles.bg} ${themeStyles.border}`}
-            title={isFixed ? "固定課堂，不可調動或修改" : "管理員：可按住拖曳以調動課節"}
+            title={isFixed ? "已確認或固定課堂，不可調動或修改" : "老師/管理員：可按住拖曳以調動課節"}
           >
             {!isFixed && (
               <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 bg-gray-800 text-white p-1 rounded-full pointer-events-none transition-opacity z-20">
@@ -379,10 +384,23 @@
               {booking.className} {booking.subject} ({booking.teacher}) ({booking.qty}部)
             </div>
             
-            <div className="text-xs text-gray-600 mb-1.5">
-              {booking.subject?.includes('科技') && !booking.className?.startsWith('1')
-                ? `負責老師: ${booking.teacher}`
-                : `負責TA: ${booking.ta || '-'}`}
+            <div className="text-xs text-gray-600 mb-1.5 flex justify-between items-center">
+              <span>
+                {booking.subject?.includes('科技') && !booking.className?.startsWith('1')
+                  ? `負責老師: ${booking.teacher}`
+                  : `負責TA: ${booking.ta || '-'}`}
+              </span>
+              {!isFixed && (
+                <span 
+                  onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }}
+                  className="text-blue-600 cursor-pointer hover:underline font-bold ml-1"
+                >
+                  確認
+                </span>
+              )}
+              {booking.isConfirmed && (
+                <span className="text-green-600 font-bold ml-1">已確認</span>
+              )}
             </div>
             
             <div className="pt-1.5 border-t border-black/10 flex justify-between items-center">

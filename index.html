@@ -110,8 +110,8 @@
       };
 
       return (
-        <div className="flex text-left">
-          <span className="whitespace-nowrap mr-1">預約日期:</span>
+        <div className="flex flex-col sm:flex-row sm:text-left">
+          <span className="whitespace-nowrap sm:mr-1 font-bold text-blue-900 mb-1 sm:mb-0">預約日期:</span>
           <div className="flex flex-col">
             <span>第{getISOWeek(nextMonday)}週: {formatRange(nextMonday, nextFriday)}</span>
             <span>第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
@@ -347,13 +347,63 @@
         });
       };
 
+      // --- 渲染卡片組件 ---
+      const renderBookingCard = (booking, themeStyles) => {
+        const isFixed = booking.cart === '3號車' && booking.subject.includes('科技');
+
+        return (
+          <div 
+            key={booking.id} 
+            draggable={!isFixed}
+            onDragStart={(e) => { if(!isFixed) e.dataTransfer.setData('bookingId', booking.id); }}
+            className={`p-2 rounded border relative ${!isFixed ? 'group cursor-move hover:shadow-md' : 'cursor-not-allowed opacity-95'} shadow-sm transition-shadow min-w-[140px] ${themeStyles.bg} ${themeStyles.border}`}
+            title={isFixed ? "科技課專用時段，不可調動或修改" : "管理員：可按住拖曳以調動課節"}
+          >
+            {!isFixed && (
+              <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 bg-gray-800 text-white p-1 rounded-full pointer-events-none transition-opacity z-20">
+                <GripVertical size={12} />
+              </div>
+            )}
+
+            <div className="font-bold text-sm text-gray-800 leading-tight mb-1 flex items-center flex-wrap gap-x-1">
+              <span>{booking.className}</span>
+              <span>{booking.subject}</span>
+              <span className="text-gray-600 font-medium">({booking.teacher})</span>
+              <span className="text-gray-600 font-medium whitespace-nowrap">({booking.qty}部)</span>
+            </div>
+            
+            <div className="text-xs text-gray-600 mb-1.5">
+              負責TA: {booking.ta || '-'}
+            </div>
+            
+            <div className="pt-1.5 border-t border-black/10 flex justify-between items-center">
+              <div className="text-xs font-bold flex items-center text-gray-700">
+                <Truck size={12} className="mr-1"/> {booking.cart}
+              </div>
+              {!isFixed && (
+                <button 
+                  onClick={() => deleteBooking(booking.id)}
+                  className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 hover:bg-red-50 px-1 rounded text-xs font-bold transition-all z-10"
+                  title="管理員：點擊刪除"
+                >
+                  刪除
+                </button>
+              )}
+              {isFixed && (
+                <span className="text-xs font-bold text-purple-700 bg-purple-100 px-1 rounded">固定</span>
+              )}
+            </div>
+          </div>
+        );
+      };
+
       const renderDateSelector = () => {
         const thisWeek = getDateStrFromMonday(0);
         const nextWeek = getDateStrFromMonday(7);
         const weekAfterNext = getDateStrFromMonday(14);
 
         return (
-          <div className="mb-6 flex flex-wrap items-center bg-white p-3 rounded-lg border border-gray-200 w-fit shadow-sm gap-2">
+          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm gap-2 w-full sm:w-max">
             <div className="flex items-center">
               <Calendar className="mr-2 text-blue-600 flex-shrink-0" size={20} />
               <label className="text-sm font-medium text-gray-700 mr-2 whitespace-nowrap">選擇檢視週次：</label>
@@ -361,13 +411,13 @@
             <select 
               value={viewDate} 
               onChange={e => setViewDate(e.target.value)} 
-              className="p-1.5 border rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-medium bg-gray-50 cursor-pointer" 
+              className="w-full sm:w-auto p-1.5 border rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-medium bg-gray-50 cursor-pointer" 
             >
               <option value={thisWeek}>本週 - {generateCurrentWeekMsg(thisWeek)}</option>
               <option value={nextWeek}>下週 - {generateCurrentWeekMsg(nextWeek)}</option>
               <option value={weekAfterNext}>下下週 - {generateCurrentWeekMsg(weekAfterNext)}</option>
             </select>
-            <span className="text-xs text-gray-500 ml-1 whitespace-nowrap">(可預約未來兩星期的課室平板電腦)</span>
+            <span className="text-xs text-gray-500 block sm:inline whitespace-normal sm:whitespace-nowrap mt-1 sm:mt-0">(可預約未來兩星期的課室平板電腦)</span>
           </div>
         );
       };
@@ -618,14 +668,17 @@
       };
 
       const renderRecords = () => (
-        <div className="space-y-2">
+        <div className="space-y-2 w-full max-w-full overflow-hidden">
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-4 relative">
-            <h2 className="text-xl font-bold text-gray-800 flex items-center">
-              <List className="mr-2 text-blue-600" size={24} />
-              借用紀錄清單 (按車輛分類時間表)
+            <h2 className="text-xl font-bold text-gray-800 flex flex-col sm:flex-row sm:items-center">
+              <div className="flex items-center">
+                <List className="mr-2 text-blue-600 flex-shrink-0" size={24} />
+                <span>借用紀錄清單</span>
+              </div>
+              <span className="text-base text-gray-600 sm:ml-2 mt-1 sm:mt-0">(按車輛分類時間表)</span>
             </h2>
             
-            <div className="inline-block bg-blue-50 text-blue-800 px-3.5 py-2 rounded-md text-sm font-semibold border border-blue-100 shadow-sm mt-3">
+            <div className="block sm:inline-block bg-blue-50 text-blue-800 px-3.5 py-2 rounded-md text-sm font-semibold border border-blue-100 shadow-sm mt-3 overflow-x-auto w-full sm:w-auto">
               {generateBookingRangeMsg()}
             </div>
           </div>
@@ -644,12 +697,12 @@
           <div>
             {renderDateSelector()}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto w-full pb-4">
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-6 gap-4">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                  <Calendar className="mr-2 text-blue-600" size={24} />
-                  每週平板電腦(iPad) 借用總表
+                  <Calendar className="mr-2 text-blue-600 flex-shrink-0" size={24} />
+                  <span>每週平板電腦(iPad) 借用總表</span>
                 </h2>
-                <div className="flex space-x-4 text-sm font-medium">
+                <div className="flex flex-wrap gap-2 text-sm font-medium">
                   <span className="flex items-center text-blue-700 bg-blue-50 px-2 py-1 rounded"><Truck size={16} className="mr-1"/> 1號車</span>
                   <span className="flex items-center text-green-700 bg-green-50 px-2 py-1 rounded"><Truck size={16} className="mr-1"/> 2號車</span>
                   <span className="flex items-center text-purple-700 bg-purple-50 px-2 py-1 rounded"><Truck size={16} className="mr-1"/> 3號車 (1-4年級科技專用)</span>
@@ -752,11 +805,11 @@
             </h1>
           </header>
 
-          <div className="max-w-5xl mx-auto mb-6 flex justify-center">
-            <div className="inline-flex bg-gray-200 rounded-lg p-1">
+          <div className="max-w-5xl mx-auto mb-6 px-2 flex justify-center">
+            <div className="grid grid-cols-1 sm:flex sm:flex-row bg-gray-200 rounded-lg p-1 gap-1 w-full sm:w-auto">
               <button
                 onClick={() => setActiveTab('form')}
-                className={`flex items-center px-6 py-3 rounded-md font-bold text-lg transition-all ${
+                className={`flex justify-center items-center px-4 py-3 sm:px-6 rounded-md font-bold text-base sm:text-lg transition-all w-full sm:w-auto ${
                   activeTab === 'form' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                 }`}
               >
@@ -765,7 +818,7 @@
               </button>
               <button
                 onClick={() => setActiveTab('records')}
-                className={`flex items-center px-6 py-3 rounded-md font-bold text-lg transition-all ${
+                className={`flex justify-center items-center px-4 py-3 sm:px-6 rounded-md font-bold text-base sm:text-lg transition-all w-full sm:w-auto ${
                   activeTab === 'records' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                 }`}
               >
@@ -774,7 +827,7 @@
               </button>
               <button
                 onClick={() => setActiveTab('schedule')}
-                className={`flex items-center px-6 py-3 rounded-md font-bold text-lg transition-all ${
+                className={`flex justify-center items-center px-4 py-3 sm:px-6 rounded-md font-bold text-base sm:text-lg transition-all w-full sm:w-auto ${
                   activeTab === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                 }`}
               >

@@ -111,11 +111,14 @@
       };
 
       return (
-        <div className="flex flex-col sm:flex-row sm:text-left">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:text-left">
           <span className="whitespace-nowrap sm:mr-1 font-bold text-blue-900 mb-1 sm:mb-0">預約日期:</span>
-          <div className="flex flex-col">
+          <div className="flex flex-col sm:hidden">
             <span>第{getISOWeek(nextMonday)}週: {formatRange(nextMonday, nextFriday)}</span>
             <span>第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
+          </div>
+          <div className="hidden sm:inline">
+            <span>第{getISOWeek(nextMonday)}週: {formatRange(nextMonday, nextFriday)} 及 第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
           </div>
         </div>
       );
@@ -189,6 +192,7 @@
       const [showAdminModal, setShowAdminModal] = useState(false);
       const [unlockTargetId, setUnlockTargetId] = useState(null);
       const [adminPassword, setAdminPassword] = useState('');
+      const [editTargetBooking, setEditTargetBooking] = useState(null);
 
       const [viewDate, setViewDate] = useState(getLocalYYYYMMDD(new Date()));
 
@@ -369,18 +373,20 @@
       };
 
       // --- 渲染卡片組件 ---
-      const renderBookingCard = (booking, themeStyles) => {
-        const isFixed = booking.isRecurring || (booking.cart === '3號車' && booking.subject?.includes('科技')) || (booking.isConfirmed && !isAdmin);
+      const renderBookingCard = (booking, themeStyles, viewOnly = false) => {
+        const isSystemFixed = booking.isRecurring || (booking.cart === '3號車' && booking.subject?.includes('科技'));
+        const isLocked = isSystemFixed || (booking.isConfirmed && !isAdmin);
+        const isDraggable = !isSystemFixed && (!booking.isConfirmed || isAdmin) && !viewOnly;
 
         return (
           <div 
             key={booking.id} 
-            draggable={!isFixed}
-            onDragStart={(e) => { if(!isFixed) e.dataTransfer.setData('bookingId', booking.id); }}
-            className={`p-2 rounded border relative ${!isFixed ? 'group cursor-move hover:shadow-md' : 'cursor-not-allowed opacity-95'} shadow-sm transition-shadow min-w-[140px] ${themeStyles.bg} ${themeStyles.border}`}
-            title={isFixed ? "已確認或固定課堂，不可調動或修改" : "老師/管理員：可按住拖曳以調動課節"}
+            draggable={isDraggable}
+            onDragStart={(e) => { if(isDraggable) e.dataTransfer.setData('bookingId', booking.id); }}
+            className={`p-2 rounded border relative ${isDraggable ? 'group cursor-move hover:shadow-md cursor-pointer' : 'opacity-95'} shadow-sm transition-shadow min-w-[140px] ${themeStyles.bg} ${themeStyles.border}`}
+            title={viewOnly ? "" : (isSystemFixed ? "固定課堂，不可調動或修改" : (booking.isConfirmed ? "點擊解除確認(需輸入管理員密碼)" : "老師/管理員：可按住拖曳以調動，或點擊編輯修改內容"))}
           >
-            {!isFixed && (
+            {isDraggable && (
               <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 bg-gray-800 text-white p-1 rounded-full pointer-events-none transition-opacity z-20">
                 <GripVertical size={12} />
               </div>
@@ -390,54 +396,52 @@
               {booking.className} {booking.subject} ({booking.teacher}) ({booking.qty}部)
             </div>
             
-            <div className="text-xs text-gray-600 mb-1.5 flex justify-between items-center">
-              <span>
-                {booking.subject?.includes('科技') && !booking.className?.startsWith('1')
-                  ? `負責老師: ${booking.teacher}`
-                  : (booking.ta === 'Issac' || booking.ta === 'Ming' ? `ITRO: ${booking.ta}` : (booking.ta === 'Stephanie' ? `ITRA: ${booking.ta}` : `TA: ${booking.ta || '-'}`))}
-              </span>
-              {!isFixed && (
-                <span 
-                  onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }}
-                  className="text-blue-600 cursor-pointer hover:underline font-bold ml-1"
-                >
-                  確認
-                </span>
-              )}
-              {booking.isConfirmed && (
-                <span 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (isAdmin) {
-                      setBookings(bookings.map(b => b.id === booking.id ? { ...b, isConfirmed: false } : b));
-                      showNotification('已解除確認，現在可作修改。', 'success');
-                    } else {
-                      setUnlockTargetId(booking.id);
-                    }
-                  }}
-                  className="text-green-600 font-bold ml-1 cursor-pointer hover:underline"
-                  title="點擊解除確認(需輸入管理員密碼)"
-                >
-                  已確認
-                </span>
-              )}
+            <div className="text-xs text-gray-600 mb-1.5">
+              {booking.subject?.includes('科技') && !booking.className?.startsWith('1')
+                ? `負責老師: ${booking.teacher}`
+                : (booking.ta === 'Issac' || booking.ta === 'Ming' ? `ITRO: ${booking.ta}` : (booking.ta === 'Stephanie' ? `ITRA: ${booking.ta}` : `TA: ${booking.ta || '-'}`))}
             </div>
             
             <div className="pt-1.5 border-t border-black/10 flex justify-between items-center">
               <div className="text-xs font-bold flex items-center text-gray-700">
                 <Truck size={12} className="mr-1"/> {booking.cart}
               </div>
-              {!isFixed && (
-                <button 
-                  onClick={() => deleteBooking(booking.id)}
-                  className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 hover:bg-red-50 px-1 rounded text-xs font-bold transition-all z-10"
-                  title="管理員：點擊刪除"
-                >
-                  刪除
-                </button>
+              
+              {!viewOnly && (
+                <div className="flex items-center space-x-1.5">
+                  {!isSystemFixed && !booking.isConfirmed && (
+                    <>
+                      <button onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="opacity-0 group-hover:opacity-100 text-blue-600 hover:bg-blue-100 px-1 rounded text-xs font-bold transition-all z-10">編輯</button>
+                      <button onClick={(e) => { e.stopPropagation(); deleteBooking(booking.id); }} className="opacity-0 group-hover:opacity-100 text-red-600 hover:bg-red-100 px-1 rounded text-xs font-bold transition-all z-10">刪除</button>
+                      <span onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="text-blue-600 cursor-pointer hover:underline font-bold text-xs ml-1">確認</span>
+                    </>
+                  )}
+                  {!isSystemFixed && booking.isConfirmed && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAdmin) {
+                          setBookings(bookings.map(b => b.id === booking.id ? { ...b, isConfirmed: false } : b));
+                          showNotification('已解除確認，現在可作修改。', 'success');
+                        } else {
+                          setUnlockTargetId(booking.id);
+                        }
+                      }}
+                      className="text-green-600 font-bold text-xs cursor-pointer hover:underline z-10"
+                      title="點擊解除確認(需輸入管理員密碼)"
+                    >
+                      已確認
+                    </span>
+                  )}
+                  {isSystemFixed && (
+                    <span className="text-xs font-bold text-purple-700 bg-purple-100 px-1 rounded">固定</span>
+                  )}
+                </div>
               )}
-              {isFixed && (
-                <span className="text-xs font-bold text-purple-700 bg-purple-100 px-1 rounded">固定</span>
+              {viewOnly && (booking.isConfirmed || isSystemFixed) && (
+                <span className={`text-xs font-bold px-1 rounded ${isSystemFixed ? 'text-purple-700 bg-purple-100' : 'text-green-600'}`}>
+                  {isSystemFixed ? '固定' : '已確認'}
+                </span>
               )}
             </div>
           </div>
@@ -643,7 +647,7 @@
               <table className="w-full border-collapse border border-black min-w-[850px]">
                 <thead>
                   <tr>
-                    <th className="border border-black p-2 bg-blue-100 text-center w-36 text-sm text-blue-900 shadow-sm font-bold whitespace-nowrap">
+                    <th className="border border-black p-2 bg-blue-100 text-center w-36 text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap">
                       節數/時間
                     </th>
                     {weekDates.map(wd => (
@@ -763,7 +767,7 @@
               <table className="w-full border-collapse border border-black min-w-[850px]">
                 <thead>
                   <tr>
-                    <th className="border border-black p-2 bg-blue-100 text-center w-36 text-sm text-blue-900 shadow-sm font-bold whitespace-nowrap">
+                    <th className="border border-black p-2 bg-blue-100 text-center w-36 text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap">
                       節數/時間
                     </th>
                     {weekDates.map(wd => (
@@ -815,9 +819,7 @@
                           return (
                             <td 
                               key={`${wd.name}-${period.id}`} 
-                              className="border border-black p-2 align-top h-24 hover:bg-gray-50 transition-colors"
-                              onDragOver={(e) => e.preventDefault()}
-                              onDrop={(e) => handleDrop(e, wd.dateStr, period.id, wd.name)}
+                              className="border border-black p-2 align-top h-24 bg-gray-50 transition-colors"
                             >
                               <div className="space-y-2">
                                 {cellBookings.map(booking => {
@@ -826,13 +828,8 @@
                                   if (booking.cart === '2號車') themeStyles = { bg: "bg-green-50", border: "border-green-200" };
                                   if (booking.cart === '3號車') themeStyles = { bg: "bg-purple-50", border: "border-purple-200" };
 
-                                  return renderBookingCard(booking, themeStyles);
+                                  return renderBookingCard(booking, themeStyles, true);
                                 })}
-                                {cellBookings.length === 0 && (
-                                  <div className="h-full w-full min-h-[40px] flex items-center justify-center text-transparent hover:text-gray-300 border-2 border-transparent hover:border-dashed hover:border-gray-300 rounded transition-all">
-                                    拖曳至此
-                                  </div>
-                                )}
                               </div>
                             </td>
                           );
@@ -918,10 +915,64 @@
         );
       };
 
+      const renderEditModal = () => {
+        if (!editTargetBooking) return null;
+        return (
+          <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><ClipboardList className="mr-2 text-blue-600" size={20}/> 編輯課堂內容</h3>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                setBookings(bookings.map(b => b.id === editTargetBooking.id ? editTargetBooking : b));
+                setEditTargetBooking(null);
+                showNotification('課堂資料已更新', 'success');
+              }}>
+                <div className="grid grid-cols-2 gap-4 mb-5">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">班別</label>
+                    <select value={editTargetBooking.className} onChange={e => setEditTargetBooking({...editTargetBooking, className: e.target.value})} className="w-full p-2 border rounded-lg outline-none bg-white">
+                      {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">科目</label>
+                    <select value={editTargetBooking.subject} onChange={e => setEditTargetBooking({...editTargetBooking, subject: e.target.value})} className="w-full p-2 border rounded-lg outline-none bg-white">
+                      {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">教師代號</label>
+                    <select value={editTargetBooking.teacher} onChange={e => setEditTargetBooking({...editTargetBooking, teacher: e.target.value})} className="w-full p-2 border rounded-lg outline-none bg-white">
+                      {TEACHERS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">數量</label>
+                    <input type="number" min="1" max="40" value={editTargetBooking.qty} onChange={e => setEditTargetBooking({...editTargetBooking, qty: parseInt(e.target.value) || 0})} className="w-full p-2 border rounded-lg outline-none" />
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <label className="text-sm font-medium text-gray-700">負責TA</label>
+                    <select value={editTargetBooking.ta} onChange={e => setEditTargetBooking({...editTargetBooking, ta: e.target.value})} className="w-full p-2 border rounded-lg outline-none bg-white">
+                      <option value="">無</option>
+                      {TAS.map(ta => <option key={ta} value={ta}>{ta}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button type="button" onClick={() => setEditTargetBooking(null)} className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">取消</button>
+                  <button type="submit" className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors">儲存變更</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8 relative">
           {renderAdminModal()}
           {renderUnlockModal()}
+          {renderEditModal()}
           <header className="max-w-5xl mx-auto mb-6 text-center relative">
             <div className="absolute right-0 top-0 sm:right-2 sm:top-2">
               {isAdmin ? (
@@ -971,7 +1022,7 @@
               >
                 <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
                 <span className="sm:hidden">總表</span>
-                <span className="hidden sm:inline">檢視總表 (TA用)</span>
+                <span className="hidden sm:inline">本週總表</span>
               </button>
             </div>
           </div>

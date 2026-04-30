@@ -14,7 +14,10 @@
       "imports": {
         "react": "https://esm.sh/react@18.2.0",
         "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "lucide-react": "https://esm.sh/lucide-react@0.294.0"
+        "lucide-react": "https://esm.sh/lucide-react@0.294.0",
+        "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
       }
     }
   </script>
@@ -29,9 +32,29 @@
 
   <!-- 系統核心邏輯 -->
   <script type="text/babel" data-type="module">
-    import React, { useState } from 'react';
+    import React, { useState, useEffect } from 'react';
     import { createRoot } from 'react-dom/client';
     import { Calendar, ClipboardList, MonitorSmartphone, AlertCircle, CheckCircle2, Truck, List, Info, GripVertical, Lock, Unlock } from 'lucide-react';
+    
+    // --- 引入雲端資料庫 Firebase ---
+    import { initializeApp } from 'firebase/app';
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+    import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+
+    // 初始化 Firebase (系統會自動注入環境變數)
+   const firebaseConfig = {
+  apiKey: "AIzaSyASu0l2emZElKziiZDZFI8YwWLEE-jv_Ts",
+  authDomain: "smr-tablet-booking.firebaseapp.com",
+  projectId: "smr-tablet-booking",
+  storageBucket: "smr-tablet-booking.firebasestorage.app",
+  messagingSenderId: "802295595519",
+  appId: "1:802295595519:web:c878de718057524784a7ca",
+  measurementId: "G-0VCP6P0HYS"
+};
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'ktgps-tablet-app';
 
     // --- 常數設定 ---
     const DAYS = ['星期一', '星期二', '星期三', '星期四', '星期五'];
@@ -185,7 +208,14 @@
 
     function App() {
       const [activeTab, setActiveTab] = useState('form');
-      const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
+      
+      // --- 雲端即時連線狀態管理 ---
+      const [user, setUser] = useState(null);
+      const [dbBookings, setDbBookings] = useState([]);
+      
+      // 合併固定數據與雲端數據
+      const bookings = [...INITIAL_BOOKINGS, ...dbBookings];
+
       const [notification, setNotification] = useState({ show: false, message: '', type: '' });
       
       const [isAdmin, setIsAdmin] = useState(false);
@@ -209,6 +239,38 @@
         qty: 35,
         ta: ''
       });
+
+      // --- 建立雲端資料庫連線與即時監聽 ---
+      useEffect(() => {
+        const initAuth = async () => {
+          try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+              await signInAnonymously(auth);
+            }
+          } catch (error) {
+            console.error("驗證失敗:", error);
+          }
+        };
+        initAuth();
+        const unsubscribe = onAuthStateChanged(auth, setUser);
+        return () => unsubscribe();
+      }, []);
+
+      useEffect(() => {
+        if (!user) return;
+        // 設定監聽器：當雲端資料庫有更新，即時下載最新資料並觸發畫面重繪
+        const collRef = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
+        const unsubscribe = onSnapshot(collRef, (snapshot) => {
+          const cloudData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setDbBookings(cloudData);
+        }, (error) => {
+          console.error("讀取資料失敗:", error);
+        });
+        
+        return () => unsubscribe(); // 離開時取消監聽
+      }, [user]);
 
       const showNotification = (message, type = 'success') => {
         setNotification({ show: true, message, type });
@@ -264,7 +326,7 @@
         }
       };
 
-      const handleSubmit = (e) => {
+      const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (formData.day === '週末(不可借用)') {
@@ -290,29 +352,50 @@
             return; 
           }
           newBookings.push({
-            id: Date.now() + pid, 
-            ...formData,
+            date: formData.date,
+            day: formData.day,
+            className: formData.className,
+            subject: formData.subject,
+            teacher: formData.teacher,
+            qty: formData.qty,
+            ta: formData.ta,
             period: pid,
-            cart: assignment.cart
+            cart: assignment.cart,
+            isConfirmed: false
           });
         }
 
-        setBookings([...bookings, ...newBookings]);
-        showNotification(`成功借用！已為您安排 ${formData.periods.length} 節課堂。`);
-        setFormData(prev => ({ ...prev, className: '', subject: '', teacher: '', ta: '', periods: [1] }));
+        // 將新資料逐筆寫入雲端資料庫
+        try {
+          for (let b of newBookings) {
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'), b);
+          }
+          showNotification(`成功借用！已為您安排 ${formData.periods.length} 節課堂。`);
+          setFormData(prev => ({ ...prev, className: '', subject: '', teacher: '', ta: '', periods: [1] }));
+        } catch (error) {
+          showNotification('寫入資料庫失敗，請重試！', 'error');
+        }
       };
 
-      const deleteBooking = (id) => {
-        setBookings(bookings.filter(b => b.id !== id));
-        showNotification('管理員已刪除該借用紀錄。', 'success');
+      const deleteBooking = async (id) => {
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id));
+          showNotification('管理員已刪除該借用紀錄。', 'success');
+        } catch (error) {
+          showNotification('刪除失敗', 'error');
+        }
       };
 
-      const confirmBooking = (id) => {
-        setBookings(bookings.map(b => b.id === id ? { ...b, isConfirmed: true } : b));
-        showNotification('已確認借用，該課堂現在不能再作改動。', 'success');
+      const confirmBooking = async (id) => {
+        try {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id), { isConfirmed: true });
+          showNotification('已確認借用，該課堂現在不能再作改動。', 'success');
+        } catch (error) {
+          showNotification('確認失敗', 'error');
+        }
       };
 
-      const handleDrop = (e, newDate, newPeriod, newDay, targetCart = null) => {
+      const handleDrop = async (e, newDate, newPeriod, newDay, targetCart = null) => {
         e.preventDefault();
         const bookingId = e.dataTransfer.getData('bookingId');
         if (!bookingId) return;
@@ -347,12 +430,17 @@
           return;
         }
 
-        setBookings(prev => prev.map(b => 
-          b.id.toString() === bookingId 
-          ? { ...b, date: newDate, day: newDay, period: newPeriod, cart: cartToCheck } 
-          : b
-        ));
-        showNotification('成功調動借用課節位置！', 'success');
+        try {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', bookingId), {
+            date: newDate,
+            day: newDay,
+            period: newPeriod,
+            cart: cartToCheck
+          });
+          showNotification('成功調動借用課節位置！', 'success');
+        } catch (error) {
+          showNotification('調動失敗，請確保網路連線正常', 'error');
+        }
       };
 
       const getWeekDates = (dateStr) => {
@@ -886,13 +974,17 @@
             <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><Unlock className="mr-2" size={20}/> 解除確認課堂</h3>
               <p className="text-sm text-gray-600 mb-4">請輸入系統管理員密碼以解鎖此課堂：</p>
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
                 if(adminPassword === 'Smr-2526') {
-                  setBookings(bookings.map(b => b.id === unlockTargetId ? { ...b, isConfirmed: false } : b));
-                  setUnlockTargetId(null);
-                  setAdminPassword('');
-                  showNotification('已解除確認，現在可以修改、移動或刪除該課堂。', 'success');
+                  try {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', unlockTargetId), { isConfirmed: false });
+                    setUnlockTargetId(null);
+                    setAdminPassword('');
+                    showNotification('已解除確認，現在可以修改、移動或刪除該課堂。', 'success');
+                  } catch(error) {
+                    showNotification('解鎖失敗', 'error');
+                  }
                 } else {
                   showNotification('密碼錯誤！', 'error');
                 }
@@ -921,11 +1013,16 @@
           <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><ClipboardList className="mr-2 text-blue-600" size={20}/> 編輯課堂內容</h3>
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
-                setBookings(bookings.map(b => b.id === editTargetBooking.id ? editTargetBooking : b));
-                setEditTargetBooking(null);
-                showNotification('課堂資料已更新', 'success');
+                const { id, ...updateData } = editTargetBooking;
+                try {
+                  await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id), updateData);
+                  setEditTargetBooking(null);
+                  showNotification('課堂資料已更新', 'success');
+                } catch(error) {
+                  showNotification('更新失敗', 'error');
+                }
               }}>
                 <div className="grid grid-cols-2 gap-4 mb-5">
                   <div className="space-y-1">

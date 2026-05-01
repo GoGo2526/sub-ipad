@@ -224,6 +224,9 @@
             const [editTargetBooking, setEditTargetBooking] = useState(null);
             const [viewDate, setViewDate] = useState(getLocalYYYYMMDD(new Date()));
             
+            const [loginRole, setLoginRole] = useState(null); // 'user', 'admin', 'office'
+            const [loginPassword, setLoginPassword] = useState('');
+            
             // 7. 新增管理車號顯示的狀態
             const [visibleCarts, setVisibleCarts] = useState(['1號車', '2號車', '3號車']);
 
@@ -517,6 +520,35 @@
                         ? prev.filter(c => c !== cartLabel) 
                         : [...prev, cartLabel]
                 );
+            };
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (loginPassword === 'Smr-12345') {
+                    setLoginRole('user');
+                    setIsAdmin(false);
+                    showNotification('登入成功！一般使用者模式');
+                } else if (loginPassword === 'Smr-2526') {
+                    setLoginRole('admin');
+                    setIsAdmin(true);
+                    showNotification('登入成功！系統管理員模式');
+                } else if (loginPassword === 'Smr-67890') {
+                    setLoginRole('office');
+                    setIsAdmin(false);
+                    setActiveTab('schedule');
+                    showNotification('登入成功！校務處模式');
+                } else {
+                    showNotification('密碼錯誤！', 'error');
+                }
+                setLoginPassword('');
+            };
+
+            const handleLogout = () => {
+                setLoginRole(null);
+                setIsAdmin(false);
+                setLoginPassword('');
+                setActiveTab('form');
+                showNotification('已登出系統');
             };
 
             const getWeekDates = (dateStr) => {
@@ -814,7 +846,7 @@
                                     return (
                                         <tr key={period.id} className="bg-gray-50">
                                         <td className={`border border-black p-1 text-center ${isBlackBold ? 'text-black font-bold text-sm' : 'text-gray-500 text-xs font-medium'}`} colSpan={6}>
-                                            {period.name}
+                                            {period.name} ({period.time})
                                         </td>
                                         </tr>
                                     );
@@ -937,9 +969,14 @@
                     {renderDateSelector()}
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto w-full pb-4">
                     <div className="flex flex-col xl:flex-row xl:justify-between items-start xl:items-center mb-6 gap-4 overflow-hidden">
-                        <h2 className="text-xl font-bold text-gray-800 flex items-center flex-shrink-0">
-                            <Calendar className="mr-2 text-blue-600 flex-shrink-0" size={24} />
-                            <span>每週平板電腦(iPad) 借用總表</span>
+                        <h2 className="text-xl font-bold text-gray-800 flex flex-col sm:flex-row items-start sm:items-center flex-shrink-0">
+                            <div className="flex items-center">
+                                <Calendar className="mr-2 text-blue-600 flex-shrink-0" size={24} />
+                                <span>每週平板電腦(iPad) 借用總表</span>
+                            </div>
+                            <span className="text-sm sm:text-xl font-bold text-gray-800 sm:ml-2 mt-1 sm:mt-0">
+                                ({generateCurrentWeekMsg(viewDate)})
+                            </span>
                         </h2>
                         {/* 7. 車號過濾切換按鈕 */}
                         <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
@@ -1139,11 +1176,24 @@
                     <form onSubmit={async (e) => {
                         e.preventDefault();
                         if (!user) { showNotification('尚未登入', 'error'); return; }
+                        
+                        const conflict = bookings.some(b =>
+                            b.period === editTargetBooking.period &&
+                            b.cart === editTargetBooking.cart &&
+                            b.id !== editTargetBooking.id &&
+                            (b.date === editTargetBooking.date || (b.isRecurring && b.day === editTargetBooking.day))
+                        );
+
+                        if (conflict) {
+                            showNotification(`該課節的 ${editTargetBooking.cart} 已被借用！`, 'error');
+                            return;
+                        }
+
                         const { id, ...updateData } = editTargetBooking;
                         try {
-                        await updateDoc(getDocRef(id), updateData);
-                        setEditTargetBooking(null);
-                        showNotification('課堂資料已更新', 'success');
+                            await updateDoc(getDocRef(id), updateData);
+                            setEditTargetBooking(null);
+                            showNotification('課堂資料已更新', 'success');
                         } catch (error) {
                             console.error("更新失敗:", error);
                             showNotification(`更新失敗：${error.message}`, 'error');
@@ -1172,7 +1222,15 @@
                             <label className="text-sm font-medium text-gray-700">數量</label>
                             <input type="number" min="1" max="40" value={editTargetBooking.qty} onChange={e => setEditTargetBooking({ ...editTargetBooking, qty: parseInt(e.target.value) || 0 })} className="w-full p-2 border rounded-lg outline-none" />
                         </div>
-                        <div className="space-y-1 col-span-2">
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-700">車號</label>
+                            <select value={editTargetBooking.cart} onChange={e => setEditTargetBooking({ ...editTargetBooking, cart: e.target.value })} className="w-full p-2 border rounded-lg outline-none bg-white">
+                            <option value="1號車">1號車</option>
+                            <option value="2號車">2號車</option>
+                            <option value="3號車">3號車</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1">
                             <label className="text-sm font-medium text-gray-700">負責TA</label>
                             <select value={editTargetBooking.ta} onChange={e => setEditTargetBooking({ ...editTargetBooking, ta: e.target.value })} className="w-full p-2 border rounded-lg outline-none bg-white">
                             <option value="">無</option>
@@ -1190,23 +1248,53 @@
                 );
             }
 
+            if (!loginRole) {
+                return (
+                    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full border border-gray-100">
+                            <div className="flex justify-center mb-6 text-blue-600">
+                                <MonitorSmartphone size={48} />
+                            </div>
+                            <h2 className="text-2xl font-extrabold text-center text-gray-800 mb-6">
+                                <span className="block">觀塘官立小學(秀明道)</span>
+                                <span className="block mt-1">平板電腦借用系統</span>
+                            </h2>
+                            <form onSubmit={handleLogin} className="space-y-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">請輸入登入密碼</label>
+                                    <input
+                                        type="password"
+                                        value={loginPassword}
+                                        onChange={e => setLoginPassword(e.target.value)}
+                                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 text-center text-xl tracking-widest"
+                                        autoFocus
+                                    />
+                                </div>
+                                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md">
+                                    登入系統
+                                </button>
+                            </form>
+                        </div>
+                        {notification.show && (
+                            <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center animate-bounce ${notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
+                                {notification.type === 'error' ? <AlertCircle className="mr-2" /> : <CheckCircle2 className="mr-2" />}
+                                {notification.message}
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8 relative">
-                {renderAdminModal()}
                 {renderUnlockModal()}
                 {renderEditModal()}
                 <header className="max-w-5xl mx-auto mb-6 text-center relative pt-4 sm:pt-0">
                     {/* 桌面版管理員登入按鈕保持原位 */}
                     <div className="absolute right-0 top-0 sm:right-2 sm:top-2 hidden sm:block">
-                    {isAdmin ? (
-                        <button onClick={() => { setIsAdmin(false); showNotification('管理員已登出', 'success'); }} className="flex items-center text-xs sm:text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full transition-colors shadow-sm">
-                        <Unlock size={14} className="mr-1" /> 管理員已登入
+                        <button onClick={handleLogout} className="flex items-center text-xs sm:text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full transition-colors shadow-sm">
+                        <Unlock size={14} className="mr-1" /> 登出 ({loginRole === 'admin' ? '系統管理員' : loginRole === 'office' ? '校務處' : '一般使用者'})
                         </button>
-                    ) : (
-                        <button onClick={() => setShowAdminModal(true)} className="flex items-center text-xs sm:text-sm font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors shadow-sm">
-                        <Lock size={14} className="mr-1" /> 管理員登入
-                        </button>
-                    )}
                     </div>
                     <h1 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">
                         <span className="block">觀塘官立小學(秀明道)</span>
@@ -1214,38 +1302,36 @@
                     </h1>
                     {/* 4. 手機版管理員登入按鈕移至文字下一列靠右 */}
                     <div className="sm:hidden flex justify-end mt-2 pr-2">
-                        {isAdmin ? (
-                            <button onClick={() => { setIsAdmin(false); showNotification('管理員已登出', 'success'); }} className="flex items-center text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full transition-colors shadow-sm">
-                            <Unlock size={12} className="mr-1" /> 管理員已登入
-                            </button>
-                        ) : (
-                            <button onClick={() => setShowAdminModal(true)} className="flex items-center text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors shadow-sm">
-                            <Lock size={12} className="mr-1" /> 管理員登入
-                            </button>
-                        )}
+                        <button onClick={handleLogout} className="flex items-center text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full transition-colors shadow-sm">
+                        <Unlock size={12} className="mr-1" /> 登出 ({loginRole === 'admin' ? '系統管理員' : loginRole === 'office' ? '校務處' : '一般使用者'})
+                        </button>
                     </div>
                 </header>
 
                 <div className="max-w-5xl mx-auto mb-6 px-2 flex justify-center">
                     <div className="flex flex-row bg-gray-200 rounded-lg p-1 gap-1 w-full sm:w-auto overflow-x-auto">
-                    <button
-                        onClick={() => setActiveTab('form')}
-                        className={`flex flex-1 sm:flex-none justify-center items-center px-2 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap ${activeTab === 'form' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
-                        }`}
-                    >
-                        <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
-                        <span className="sm:hidden">借用表</span>
-                        <span className="hidden sm:inline">填寫借用表</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('records')}
-                        className={`flex flex-1 sm:flex-none justify-center items-center px-2 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap ${activeTab === 'records' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
-                        }`}
-                    >
-                        <List className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
-                        <span className="sm:hidden">借用清單</span>
-                        <span className="hidden sm:inline">借用紀錄清單</span>
-                    </button>
+                    {loginRole !== 'office' && (
+                        <>
+                        <button
+                            onClick={() => setActiveTab('form')}
+                            className={`flex flex-1 sm:flex-none justify-center items-center px-2 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap ${activeTab === 'form' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                            }`}
+                        >
+                            <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
+                            <span className="sm:hidden">借用表</span>
+                            <span className="hidden sm:inline">填寫借用表</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('records')}
+                            className={`flex flex-1 sm:flex-none justify-center items-center px-2 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap ${activeTab === 'records' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                            }`}
+                        >
+                            <List className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
+                            <span className="sm:hidden">借用清單</span>
+                            <span className="hidden sm:inline">借用紀錄清單</span>
+                        </button>
+                        </>
+                    )}
                     <button
                         onClick={() => setActiveTab('schedule')}
                         className={`flex flex-1 sm:flex-none justify-center items-center px-2 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap ${activeTab === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'

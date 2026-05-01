@@ -300,6 +300,11 @@ export default function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!user) {
+      showNotification('系統尚未完成登入，請稍後再試！', 'error');
+      return;
+    }
+
     if (formData.day === '週末(不可借用)') {
       showNotification('週末不提供借用服務，請重新選擇日期！', 'error');
       return;
@@ -344,30 +349,49 @@ export default function App() {
       showNotification(`成功借用！已為您安排 ${formData.periods.length} 節課堂。`);
       setFormData(prev => ({ ...prev, className: '', subject: '', teacher: '', ta: '', periods: [1] }));
     } catch (error) {
-      showNotification('寫入資料庫失敗，請重試！', 'error');
+      console.error("寫入資料庫失敗:", error);
+      if (error.code === 'permission-denied') {
+        showNotification('權限不足：請檢查 Firebase Firestore 規則是否允許寫入！', 'error');
+      } else {
+        showNotification(`寫入失敗：${error.message}`, 'error');
+      }
     }
   };
 
   const deleteBooking = async (id) => {
+    if (!user) {
+      showNotification('尚未登入', 'error');
+      return;
+    }
     try {
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id));
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(id)));
       showNotification('管理員已刪除該借用紀錄。', 'success');
     } catch (error) {
-      showNotification('刪除失敗', 'error');
+      console.error("刪除失敗:", error);
+      showNotification(`刪除失敗：${error.message}`, 'error');
     }
   };
 
   const confirmBooking = async (id) => {
+    if (!user) {
+      showNotification('尚未登入', 'error');
+      return;
+    }
     try {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id), { isConfirmed: true });
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(id)), { isConfirmed: true });
       showNotification('已確認借用，該課堂現在不能再作改動。', 'success');
     } catch (error) {
-      showNotification('確認失敗', 'error');
+      console.error("確認失敗:", error);
+      showNotification(`確認失敗：${error.message}`, 'error');
     }
   };
 
   const handleDrop = async (e, newDate, newPeriod, newDay, targetCart = null) => {
     e.preventDefault();
+    if (!user) {
+      showNotification('尚未登入', 'error');
+      return;
+    }
     const bookingId = e.dataTransfer.getData('bookingId');
     if (!bookingId) return;
 
@@ -402,7 +426,7 @@ export default function App() {
     }
 
     try {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', bookingId), {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(bookingId)), {
         date: newDate,
         day: newDay,
         period: newPeriod,
@@ -410,7 +434,8 @@ export default function App() {
       });
       showNotification('成功調動借用課節位置！', 'success');
     } catch (error) {
-      showNotification('調動失敗，請確保網路連線正常', 'error');
+      console.error("調動失敗:", error);
+      showNotification(`調動失敗：${error.message}`, 'error');
     }
   };
 
@@ -480,8 +505,10 @@ export default function App() {
                   onClick={(e) => {
                     e.stopPropagation();
                     if (isAdmin) {
-                      setBookings(bookings.map(b => b.id === booking.id ? { ...b, isConfirmed: false } : b));
-                      showNotification('已解除確認，現在可作修改。', 'success');
+                      if (!user) { showNotification('尚未登入', 'error'); return; }
+                      updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(booking.id)), { isConfirmed: false })
+                        .then(() => showNotification('已解除確認，現在可作修改。', 'success'))
+                        .catch((error) => showNotification(`解除確認失敗：${error.message}`, 'error'));
                     } else {
                       setUnlockTargetId(booking.id);
                     }
@@ -948,12 +975,14 @@ export default function App() {
             e.preventDefault();
             if (adminPassword === 'Smr-2526') {
               try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', unlockTargetId), { isConfirmed: false });
+                if (!user) { showNotification('尚未登入', 'error'); return; }
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(unlockTargetId)), { isConfirmed: false });
                 setUnlockTargetId(null);
                 setAdminPassword('');
                 showNotification('已解除確認，現在可以修改、移動或刪除該課堂。', 'success');
               } catch (error) {
-                showNotification('解鎖失敗', 'error');
+                console.error("解鎖失敗:", error);
+                showNotification(`解鎖失敗：${error.message}`, 'error');
               }
             } else {
               showNotification('密碼錯誤！', 'error');
@@ -985,13 +1014,15 @@ export default function App() {
           <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><ClipboardList className="mr-2 text-blue-600" size={20} /> 編輯課堂內容</h3>
           <form onSubmit={async (e) => {
             e.preventDefault();
+            if (!user) { showNotification('尚未登入', 'error'); return; }
             const { id, ...updateData } = editTargetBooking;
             try {
-              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id), updateData);
+              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(id)), updateData);
               setEditTargetBooking(null);
               showNotification('課堂資料已更新', 'success');
             } catch (error) {
-              showNotification('更新失敗', 'error');
+              console.error("更新失敗:", error);
+              showNotification(`更新失敗：${error.message}`, 'error');
             }
           }}>
             <div className="grid grid-cols-2 gap-4 mb-5">

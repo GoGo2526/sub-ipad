@@ -503,59 +503,60 @@
                         </div>
                         )}
 
-                        <div className="font-bold text-sm text-gray-800 leading-tight mb-0.5 whitespace-nowrap">
-                        {booking.className} {booking.subject}({booking.teacher})
-                        </div>
-
-                        <div className="text-xs text-gray-600 mb-1.5 whitespace-nowrap">
-                        {booking.subject?.includes('科技') && !booking.className?.startsWith('1')
-                            ? `師: ${booking.teacher}`
-                            : (booking.ta === 'Issac' || booking.ta === 'Ming' ? `ITRO: ${booking.ta}` : (booking.ta === 'Stephanie' ? `ITRA: ${booking.ta}` : `TA: ${booking.ta || ''}`))}
-                        </div>
-
-                        <div className="pt-1.5 border-t border-black/10 flex justify-between items-center">
-                        <div className="text-xs font-bold flex items-center text-gray-700">
-                            <Truck size={12} className="mr-1" /> {booking.cart}
-                        </div>
-
-                        {!viewOnly && (
-                            <div className="flex items-center space-x-1.5">
-                            {!isSystemFixed && !booking.isConfirmed && (
+                        <div className="flex justify-between items-start mb-0.5">
+                            <div className="font-bold text-sm text-gray-800 leading-tight whitespace-nowrap">
+                            {booking.className} {booking.subject}({booking.teacher})
+                            </div>
+                            
+                            {!viewOnly && (
+                            <div className="flex items-center space-x-1 ml-1">
+                                {!isSystemFixed && !booking.isConfirmed && (
                                 <React.Fragment>
-                                <button onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="opacity-0 group-hover:opacity-100 text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-2 py-0.5 rounded text-xs font-bold transition-all z-10">編輯</button>
-                                <button onClick={(e) => { e.stopPropagation(); deleteBooking(booking.id); }} className="opacity-0 group-hover:opacity-100 text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 px-2 py-0.5 rounded text-xs font-bold transition-all z-10">刪除</button>
-                                <button onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="text-blue-700 bg-blue-100 border border-blue-300 hover:bg-blue-200 px-2 py-0.5 rounded text-xs font-bold transition-all z-10 shadow-sm">確認</button>
+                                    <button onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="opacity-0 group-hover:opacity-100 text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-1 py-0.5 rounded text-xs font-bold transition-all z-10">編輯</button>
+                                    <button onClick={(e) => { e.stopPropagation(); deleteBooking(booking.id); }} className="opacity-0 group-hover:opacity-100 text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 px-1 py-0.5 rounded text-xs font-bold transition-all z-10">刪除</button>
+                                    <button onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="text-blue-700 bg-blue-100 border border-blue-300 hover:bg-blue-200 px-1 py-0.5 rounded text-xs font-bold transition-all z-10 shadow-sm">確認</button>
                                 </React.Fragment>
-                            )}
-                            {!isSystemFixed && booking.isConfirmed && (
+                                )}
+                                {!isSystemFixed && booking.isConfirmed && (
                                 <span
-                                onClick={(e) => {
+                                    onClick={(e) => {
                                     e.stopPropagation();
                                     if (isAdmin) {
-                                    if (!user) { showNotification('尚未登入', 'error'); return; }
-                                    updateDoc(getDocRef(booking.id), { isConfirmed: false })
+                                        if (!user) { showNotification('尚未登入', 'error'); return; }
+                                        updateDoc(getDocRef(booking.id), { isConfirmed: false })
                                         .then(() => showNotification('已解除確認，現在可作修改。', 'success'))
                                         .catch((error) => showNotification(`解除確認失敗：${error.message}`, 'error'));
                                     } else {
-                                    setUnlockTargetId(booking.id);
+                                        setUnlockTargetId(booking.id);
                                     }
-                                }}
-                                className="text-green-600 font-bold text-xs cursor-pointer hover:underline z-10"
-                                title="點擊解除確認(需輸入管理員密碼)"
+                                    }}
+                                    className="text-green-600 font-bold text-xs cursor-pointer hover:underline z-10 whitespace-nowrap"
+                                    title="點擊解除確認(需輸入管理員密碼)"
                                 >
-                                已確認
+                                    已確認
                                 </span>
-                            )}
-                            {isSystemFixed && (
-                                <span className="text-xs font-bold text-purple-700 bg-purple-100 px-1 rounded">固定</span>
-                            )}
+                                )}
+                                {isSystemFixed && (
+                                <span className="text-xs font-bold text-purple-700 bg-purple-100 px-1 rounded whitespace-nowrap">固定</span>
+                                )}
                             </div>
-                        )}
-                        {viewOnly && (booking.isConfirmed || isSystemFixed) && (
-                            <span className={`text-xs font-bold px-1 rounded ${isSystemFixed ? 'text-purple-700 bg-purple-100' : 'text-green-600'}`}>
-                            {isSystemFixed ? '固定' : '已確認'}
+                            )}
+                            {viewOnly && (booking.isConfirmed || isSystemFixed) && (
+                            <span className={`text-xs font-bold px-1 rounded ml-1 whitespace-nowrap ${isSystemFixed ? 'text-purple-700 bg-purple-100' : 'text-green-600'}`}>
+                                {isSystemFixed ? '固定' : '已確認'}
                             </span>
-                        )}
+                            )}
+                        </div>
+
+                        <div className="flex justify-between items-end">
+                            <div className="text-xs text-gray-600 whitespace-nowrap">
+                            {booking.subject?.includes('科技') && !booking.className?.startsWith('1')
+                                ? `師: ${booking.teacher}`
+                                : (booking.ta === 'Issac' || booking.ta === 'Ming' ? `ITRO: ${booking.ta}` : (booking.ta === 'Stephanie' ? `ITRA: ${booking.ta}` : `TA: ${booking.ta || ''}`))}
+                            </div>
+                            <div className="text-[10px] font-bold flex items-center text-gray-400">
+                                <Truck size={10} className="mr-0.5" /> {booking.cart.replace('號車', '')}
+                            </div>
                         </div>
                     </div>
                 );

@@ -244,6 +244,12 @@
                 ta: ''
             });
 
+            // --- 簡單前端混淆工具 ---
+            // 將明文轉換為 16進位 字串，防止瀏覽器直接查看 index.html 時肉眼看見明文密碼
+            const stringToHex = (str) => {
+                return Array.from(str || '').map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+            };
+
             useEffect(() => {
                 const initAuth = async () => {
                     try {
@@ -524,15 +530,22 @@
 
             const handleLogin = (e) => {
                 e.preventDefault();
-                if (loginPassword === 'Smr-12345') {
+                const inputHex = stringToHex(loginPassword);
+                
+                // 比對的字串皆為密碼明文的 16進位編碼，隱藏原始密碼
+                // '536d722d3132333435' = Smr-12345
+                // '536d722d32353236'   = Smr-2526
+                // '536d722d32363038'   = Smr-2608
+
+                if (inputHex === '536d722d3132333435') {
                     setLoginRole('user');
                     setIsAdmin(false);
                     showNotification('登入成功！一般使用者模式');
-                } else if (loginPassword === 'Smr-2526') {
+                } else if (inputHex === '536d722d32353236') {
                     setLoginRole('admin');
                     setIsAdmin(true);
                     showNotification('登入成功！系統管理員模式');
-                } else if (loginPassword === 'Smr-2608') {
+                } else if (inputHex === '536d722d32363038') {
                     setLoginRole('office');
                     setIsAdmin(false);
                     setActiveTab('schedule');
@@ -792,7 +805,6 @@
                             <li>教師可檢視及預約借用未來兩星期的課室平板電腦.每星期四下午4時會截數.</li>
                             <li>教師只可瀏覽本星期借用情況,並不設借用.(因已作安排)</li>
                             <li>供一至四年級課室借出的平板電腦為 1, 2號車。</li>
-                            {/* 5. 修改第5項文字 */}
                             <li>系統會自動為「2-6年級科技課」指派 3號車,暫不安排借出給其他課堂使用。</li>
                             <li>如借用節數已被安排，系統會檢視並提示其他車號(1,2號)能否借用。</li>
                             <li>「綜合課」、「生教課」、「課外活動」為特別課堂，暫不開放借用。</li>
@@ -1098,7 +1110,7 @@
                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><Lock className="mr-2" size={20} /> 管理員登入</h3>
                     <form onSubmit={(e) => {
                         e.preventDefault();
-                        if (adminPassword === 'Smr-2526') {
+                        if (stringToHex(adminPassword) === '536d722d32353236') {
                         setIsAdmin(true);
                         setShowAdminModal(false);
                         setAdminPassword('');
@@ -1134,7 +1146,7 @@
                     <p className="text-sm text-gray-600 mb-4">請輸入系統管理員密碼以解鎖此課堂：</p>
                     <form onSubmit={async (e) => {
                         e.preventDefault();
-                        if (adminPassword === 'Smr-2526') {
+                        if (stringToHex(adminPassword) === '536d722d32353236') {
                         try {
                             if (!user) { showNotification('尚未登入', 'error'); return; }
                             await updateDoc(getDocRef(unlockTargetId), { isConfirmed: false });

@@ -494,7 +494,7 @@
                         key={booking.id}
                         draggable={isDraggable}
                         onDragStart={(e) => { if (isDraggable) e.dataTransfer.setData('bookingId', booking.id); }}
-                        className={`p-2 rounded border relative ${isDraggable ? 'group cursor-move hover:shadow-md cursor-pointer' : 'opacity-95'} shadow-sm transition-shadow ${themeStyles.bg} ${themeStyles.border}`}
+                        className={`p-2 rounded border relative w-full h-full min-h-[76px] flex flex-col justify-between ${isDraggable ? 'group cursor-move hover:shadow-md cursor-pointer' : 'opacity-95'} shadow-sm transition-shadow ${themeStyles.bg} ${themeStyles.border}`}
                         title={viewOnly ? "" : (isSystemFixed ? "固定課堂，不可調動或修改" : (booking.isConfirmed ? "點擊解除確認(需輸入管理員密碼)" : "老師/管理員：可按住拖曳以調動，或點擊編輯修改內容"))}
                     >
                         {isDraggable && (
@@ -503,60 +503,63 @@
                         </div>
                         )}
 
-                        <div className="flex justify-between items-start mb-0.5">
-                            <div className="font-bold text-sm text-gray-800 leading-tight whitespace-nowrap">
-                            {booking.className} {booking.subject}({booking.teacher})
+                        <div>
+                            <div className="flex justify-between items-start mb-0.5">
+                                <div className="font-bold text-sm text-gray-800 leading-tight whitespace-nowrap">
+                                {booking.className} {booking.subject}({booking.teacher})
+                                </div>
+                                
+                                <div className="flex items-center ml-1">
+                                    {!viewOnly && !isSystemFixed && !booking.isConfirmed && (
+                                        <span onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="cursor-pointer text-blue-700 bg-blue-100 hover:bg-blue-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10">確認</span>
+                                    )}
+                                    {!viewOnly && !isSystemFixed && booking.isConfirmed && (
+                                        <span
+                                            onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isAdmin) {
+                                                if (!user) { showNotification('尚未登入', 'error'); return; }
+                                                updateDoc(getDocRef(booking.id), { isConfirmed: false })
+                                                .then(() => showNotification('已解除確認，現在可作修改。', 'success'))
+                                                .catch((error) => showNotification(`解除確認失敗：${error.message}`, 'error'));
+                                            } else {
+                                                setUnlockTargetId(booking.id);
+                                            }
+                                            }}
+                                            className="text-green-600 font-bold text-[10px] cursor-pointer hover:underline z-10 whitespace-nowrap"
+                                            title="點擊解除確認(需輸入管理員密碼)"
+                                        >
+                                            已確認
+                                        </span>
+                                    )}
+                                    {!viewOnly && isSystemFixed && (
+                                        <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1 rounded whitespace-nowrap">固定</span>
+                                    )}
+                                    {viewOnly && (booking.isConfirmed || isSystemFixed) && (
+                                        <span className={`text-[10px] font-bold px-1 rounded whitespace-nowrap ${isSystemFixed ? 'text-purple-700 bg-purple-100' : 'text-green-600'}`}>
+                                            {isSystemFixed ? '固定' : '已確認'}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            
-                            {!viewOnly && (
-                            <div className="flex items-center space-x-1 ml-1">
-                                {!isSystemFixed && !booking.isConfirmed && (
-                                <React.Fragment>
-                                    <button onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="opacity-0 group-hover:opacity-100 text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-1 py-0.5 rounded text-xs font-bold transition-all z-10">編輯</button>
-                                    <button onClick={(e) => { e.stopPropagation(); deleteBooking(booking.id); }} className="opacity-0 group-hover:opacity-100 text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 px-1 py-0.5 rounded text-xs font-bold transition-all z-10">刪除</button>
-                                    <button onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="text-blue-700 bg-blue-100 border border-blue-300 hover:bg-blue-200 px-1 py-0.5 rounded text-xs font-bold transition-all z-10 shadow-sm">確認</button>
-                                </React.Fragment>
-                                )}
-                                {!isSystemFixed && booking.isConfirmed && (
-                                <span
-                                    onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (isAdmin) {
-                                        if (!user) { showNotification('尚未登入', 'error'); return; }
-                                        updateDoc(getDocRef(booking.id), { isConfirmed: false })
-                                        .then(() => showNotification('已解除確認，現在可作修改。', 'success'))
-                                        .catch((error) => showNotification(`解除確認失敗：${error.message}`, 'error'));
-                                    } else {
-                                        setUnlockTargetId(booking.id);
-                                    }
-                                    }}
-                                    className="text-green-600 font-bold text-xs cursor-pointer hover:underline z-10 whitespace-nowrap"
-                                    title="點擊解除確認(需輸入管理員密碼)"
-                                >
-                                    已確認
-                                </span>
-                                )}
-                                {isSystemFixed && (
-                                <span className="text-xs font-bold text-purple-700 bg-purple-100 px-1 rounded whitespace-nowrap">固定</span>
-                                )}
+
+                            <div className="text-xs text-gray-600 whitespace-nowrap mb-0.5">
+                                {booking.subject?.includes('科技') && !booking.className?.startsWith('1')
+                                    ? `師: ${booking.teacher}`
+                                    : (booking.ta === 'Issac' || booking.ta === 'Ming' ? `ITRO: ${booking.ta}` : (booking.ta === 'Stephanie' ? `ITRA: ${booking.ta}` : `TA: ${booking.ta || ''}`))}
                             </div>
-                            )}
-                            {viewOnly && (booking.isConfirmed || isSystemFixed) && (
-                            <span className={`text-xs font-bold px-1 rounded ml-1 whitespace-nowrap ${isSystemFixed ? 'text-purple-700 bg-purple-100' : 'text-green-600'}`}>
-                                {isSystemFixed ? '固定' : '已確認'}
-                            </span>
-                            )}
                         </div>
 
-                        <div className="flex justify-between items-end">
-                            <div className="text-xs text-gray-600 whitespace-nowrap">
-                            {booking.subject?.includes('科技') && !booking.className?.startsWith('1')
-                                ? `師: ${booking.teacher}`
-                                : (booking.ta === 'Issac' || booking.ta === 'Ming' ? `ITRO: ${booking.ta}` : (booking.ta === 'Stephanie' ? `ITRA: ${booking.ta}` : `TA: ${booking.ta || ''}`))}
+                        <div className="flex justify-between items-end mt-1">
+                            <div className="text-[10px] font-bold flex items-center text-gray-500">
+                                <Truck size={10} className="mr-0.5" /> {booking.cart}
                             </div>
-                            <div className="text-[10px] font-bold flex items-center text-gray-400">
-                                <Truck size={10} className="mr-0.5" /> {booking.cart.replace('號車', '')}
-                            </div>
+                            {!viewOnly && !isSystemFixed && !booking.isConfirmed && (
+                                <div className="flex items-center space-x-1">
+                                    <span onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="cursor-pointer opacity-0 group-hover:opacity-100 text-white bg-green-700 hover:bg-green-800 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10">編輯</span>
+                                    <span onClick={(e) => { e.stopPropagation(); deleteBooking(booking.id); }} className="cursor-pointer opacity-0 group-hover:opacity-100 text-red-600 bg-red-100 hover:bg-red-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10">刪除</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
@@ -757,79 +760,79 @@
                     </span>
                     </h3>
                     <div className="overflow-x-auto w-full pb-4">
-                    <table className="w-full border-collapse border border-black min-w-[1000px]">
-                        <thead>
-                        <tr>
-                            <th className="border border-black p-2 bg-blue-100 text-center w-36 text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap">
-                            節數/時間
-                            </th>
-                            {weekDates.map(wd => (
-                            <th key={wd.name} className="border border-black p-2 bg-blue-100 text-center w-1/5 text-blue-900">
-                                <div className="font-extrabold text-lg">{wd.display}</div>
-                                <div className="font-bold text-base">{wd.name}</div>
-                            </th>
-                            ))}
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {PERIODS.map(period => {
-                            if (period.isBreak) {
-                            const isBlackBold = ['小息', '小休', '午膳', '午息'].includes(period.name);
-                            return (
-                                <tr key={period.id} className="bg-gray-50">
-                                <td className={`border border-black p-1 text-center ${isBlackBold ? 'text-black font-bold text-sm' : 'text-gray-500 text-xs font-medium'}`} colSpan={6}>
-                                    {period.name}
-                                </td>
-                                </tr>
-                            );
-                            }
-                            return (
-                            <tr key={period.id}>
-                                <td className="border border-black p-2 bg-gray-200 text-xs font-medium text-center align-middle w-36">
-                                <div className="font-bold text-sm mb-1 text-gray-800 whitespace-nowrap">{period.name}</div>
-                                <div className="text-gray-600 whitespace-nowrap">
-                                    <span>{period.time}</span>
-                                </div>
-                                </td>
-                                {weekDates.map(wd => {
-                                const cellBookings = bookings.filter(b =>
-                                    (b.isSystem && b.day === wd.name && b.period === period.id) ||
-                                    (b.isRecurring && b.day === wd.name && b.period === period.id) ||
-                                    (!b.isSystem && !b.isRecurring && b.date === wd.dateStr && b.period === period.id)
-                                );
-                                const isBlackout = cellBookings.some(b => b.isSystem);
-
-                                if (isBlackout) {
-                                    const remark = cellBookings.find(b => b.isSystem).remark;
+                        <table className="w-full border-collapse border border-black min-w-[1000px] table-fixed">
+                            <thead>
+                            <tr>
+                                <th className="border border-black p-2 bg-blue-100 text-center w-36 text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap">
+                                節數/時間
+                                </th>
+                                {weekDates.map(wd => (
+                                <th key={wd.name} className="border border-black p-2 bg-blue-100 text-center text-blue-900">
+                                    <div className="font-extrabold text-lg">{wd.display}</div>
+                                    <div className="font-bold text-base">{wd.name}</div>
+                                </th>
+                                ))}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {PERIODS.map(period => {
+                                if (period.isBreak) {
+                                    const isBlackBold = ['小息', '小休', '午膳', '午息'].includes(period.name);
                                     return (
-                                    <td key={`${wd.name}-${period.id}`} className="border border-black p-2 align-middle text-center bg-[#f5f5dc]">
-                                        <span className="text-black font-extrabold text-[15px]">{remark}</span>
-                                    </td>
+                                        <tr key={period.id} className="bg-gray-50">
+                                        <td className={`border border-black p-1 text-center ${isBlackBold ? 'text-black font-bold text-sm' : 'text-gray-500 text-xs font-medium'}`} colSpan={6}>
+                                            {period.name}
+                                        </td>
+                                        </tr>
                                     );
                                 }
-
-                                const booking = cellBookings.find(b => b.cart === cartLabel);
-
                                 return (
-                                    <td
-                                    key={`${wd.name}-${period.id}`}
-                                    className="border border-black p-2 align-top transition-colors hover:bg-gray-50"
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={(e) => handleDrop(e, wd.dateStr, period.id, wd.name, cartLabel)}
-                                    >
-                                    {booking ? renderBookingCard(booking, themeStyles) : (
-                                        <div className="h-full w-full min-h-[60px] flex items-center justify-center text-transparent hover:text-gray-300 border-2 border-transparent hover:border-dashed hover:border-gray-300 rounded transition-all">
-                                        可拖曳至此
-                                        </div>
-                                    )}
+                                <tr key={period.id}>
+                                    <td className="border border-black p-2 bg-gray-200 text-xs font-medium text-center align-middle w-36">
+                                    <div className="font-bold text-sm mb-1 text-gray-800 whitespace-nowrap">{period.name}</div>
+                                    <div className="text-gray-600 whitespace-nowrap">
+                                        <span>{period.time}</span>
+                                    </div>
                                     </td>
-                                );
-                                })}
-                            </tr>
-                            )
-                        })}
-                        </tbody>
-                    </table>
+                                    {weekDates.map(wd => {
+                                    const cellBookings = bookings.filter(b =>
+                                        (b.isSystem && b.day === wd.name && b.period === period.id) ||
+                                        (b.isRecurring && b.day === wd.name && b.period === period.id) ||
+                                        (!b.isSystem && !b.isRecurring && b.date === wd.dateStr && b.period === period.id)
+                                    );
+                                    const isBlackout = cellBookings.some(b => b.isSystem);
+
+                                    if (isBlackout) {
+                                        const remark = cellBookings.find(b => b.isSystem).remark;
+                                        return (
+                                        <td key={`${wd.name}-${period.id}`} className="border border-black p-2 align-middle text-center bg-[#f5f5dc]">
+                                            <span className="text-black font-extrabold text-[15px]">{remark}</span>
+                                        </td>
+                                        );
+                                    }
+
+                                    const booking = cellBookings.find(b => b.cart === cartLabel);
+
+                                    return (
+                                        <td
+                                        key={`${wd.name}-${period.id}`}
+                                        className="border border-black p-2 align-top transition-colors hover:bg-gray-50 h-full"
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={(e) => handleDrop(e, wd.dateStr, period.id, wd.name, cartLabel)}
+                                        >
+                                        {booking ? renderBookingCard(booking, themeStyles) : (
+                                            <div className="h-full w-full min-h-[76px] flex items-center justify-center text-transparent hover:text-gray-300 border-2 border-transparent hover:border-dashed hover:border-gray-300 rounded transition-all">
+                                            可拖曳至此
+                                            </div>
+                                        )}
+                                        </td>
+                                    );
+                                    })}
+                                </tr>
+                                )
+                            })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 );
@@ -877,14 +880,14 @@
                         </div>
                     </div>
 
-                    <table className="w-full border-collapse border border-black min-w-[1000px]">
+                    <table className="w-full border-collapse border border-black min-w-[1000px] table-fixed">
                         <thead>
                         <tr>
                             <th className="border border-black p-2 bg-blue-100 text-center w-36 text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap">
                             節數/時間
                             </th>
                             {weekDates.map(wd => (
-                            <th key={wd.name} className="border border-black p-3 bg-blue-100 text-center w-1/5 text-blue-900">
+                            <th key={wd.name} className="border border-black p-3 bg-blue-100 text-center text-blue-900">
                                 <div className="font-extrabold text-lg">{wd.display}</div>
                                 <div className="font-bold text-base">{wd.name}</div>
                             </th>

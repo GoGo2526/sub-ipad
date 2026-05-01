@@ -71,8 +71,8 @@
             { id: 'recess2', name: '小休', time: '11:15 - 11:25', isBreak: true },
             { id: 5, name: '第5節', time: '11:25 - 12:00' },
             { id: 6, name: '第6節', time: '12:00 - 12:35' },
-            { id: 'lunch', name: '午膳', time: '12:35 - 1:35', isBreak: true },
-            { id: 'lunch_rest', name: '午息', time: '', isBreak: true },
+            { id: 'lunch', name: '午膳', time: '12:35 - 1:15', isBreak: true },
+            { id: 'lunch_rest', name: '午息', time: '1:15 - 1:35', isBreak: true },
             { id: 7, name: '第7節', time: '1:35 - 2:10' },
             { id: 8, name: '第8節', time: '2:10 - 2:45' },
             { id: 9, name: '第9節', time: '2:45 - 3:15' },
@@ -223,6 +223,9 @@
             const [adminPassword, setAdminPassword] = useState('');
             const [editTargetBooking, setEditTargetBooking] = useState(null);
             const [viewDate, setViewDate] = useState(getLocalYYYYMMDD(new Date()));
+            
+            // 7. 新增管理車號顯示的狀態
+            const [visibleCarts, setVisibleCarts] = useState(['1號車', '2號車', '3號車']);
 
             const currentDayIdx = new Date().getDay();
             const initialFormDay = (currentDayIdx === 0 || currentDayIdx === 6) ? '週末(不可借用)' : DAYS[currentDayIdx - 1];
@@ -274,7 +277,7 @@
 
             const showNotification = (message, type = 'success') => {
                 setNotification({ show: true, message, type });
-                setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
+                setTimeout(() => setNotification({ show: false, message: '', type: '' }), 5000); // 延長提示時間以便閱讀
             };
 
             const handleInputChange = (e) => {
@@ -299,31 +302,70 @@
                 });
             };
 
-            const assignCart = (date, day, period, subject, className) => {
-                if (BLACKOUT_PERIODS[day] && BLACKOUT_PERIODS[day][period]) {
-                    return { success: false, message: `該時段為 ${BLACKOUT_PERIODS[day][period]}，暫停借用。` };
+            // 1. 增加連堂優先安排相同車號之邏輯判定
+            const planAssignments = (date, day, periods, subject, className) => {
+                const isGrade2To6Tech = /^[2-6]/.test(className) && subject.includes('科技');
+                let assignments = {};
+
+                const getAvailableCarts = (pid) => {
+                    if (BLACKOUT_PERIODS[day] && BLACKOUT_PERIODS[day][pid]) return [];
+                    const currentBookings = bookings.filter(b =>
+                        !b.isSystem &&
+                        b.period === pid &&
+                        (b.date === date || (b.isRecurring && b.day === day))
+                    );
+                    const usedCarts = currentBookings.map(b => b.cart);
+                    const avail = [];
+                    if (!usedCarts.includes('1號車')) avail.push('1號車');
+                    if (!usedCarts.includes('2號車')) avail.push('2號車');
+                    return avail;
+                };
+
+                // 2-6 年級科技課獨立處理
+                if (isGrade2To6Tech) {
+                    for (let pid of periods) {
+                        if (BLACKOUT_PERIODS[day] && BLACKOUT_PERIODS[day][pid]) {
+                            return { success: false, message: `第${pid}節為 ${BLACKOUT_PERIODS[day][pid]}，暫停借用。` };
+                        }
+                        const currentBookings = bookings.filter(b => !b.isSystem && b.period === pid && (b.date === date || (b.isRecurring && b.day === day)));
+                        if (currentBookings.some(b => b.cart === '3號車')) {
+                            return { success: false, message: `第${pid}節的 3號車 已被借用。` };
+                        }
+                        assignments[pid] = '3號車';
+                    }
+                    return { success: true, assignments };
                 }
 
-                const currentBookings = bookings.filter(b =>
-                    !b.isSystem &&
-                    b.period === period &&
-                    (b.date === date || (b.isRecurring && b.day === day))
-                );
-                const isGrade1To4Tech = /^[1-4]/.test(className) && subject.includes('科技');
+                // 處理普通課堂的連堂邏輯
+                const pairs = [[1, 2], [3, 4], [5, 6], [7, 8]];
+                let remainingPeriods = [...periods];
 
-                if (isGrade1To4Tech) {
-                    const isCart3Taken = currentBookings.some(b => b.cart === '3號車');
-                    if (isCart3Taken) return { success: false, message: '3號車在該時段已被借用。' };
-                    return { success: true, cart: '3號車' };
-                } else {
-                    const isCart1Taken = currentBookings.some(b => b.cart === '1號車');
-                    const isCart2Taken = currentBookings.some(b => b.cart === '2號車');
+                for (let pair of pairs) {
+                    if (periods.includes(pair[0]) && periods.includes(pair[1])) {
+                        const avail0 = getAvailableCarts(pair[0]);
+                        const avail1 = getAvailableCarts(pair[1]);
+                        const common = avail0.filter(c => avail1.includes(c));
 
-                    if (!isCart1Taken) return { success: true, cart: '1號車' };
-                    if (!isCart2Taken) return { success: true, cart: '2號車' };
-
-                    return { success: false, message: '1號及2號車在該時段均已被借出。' };
+                        if (common.length === 0) {
+                            return { success: false, message: `無法為連堂 (第${pair[0]},${pair[1]}節) 安排同一部車輛，請嘗試其他時段或分開單獨預約。` };
+                        }
+                        // 優先安排共同可用的車號
+                        assignments[pair[0]] = common[0];
+                        assignments[pair[1]] = common[0];
+                        remainingPeriods = remainingPeriods.filter(p => p !== pair[0] && p !== pair[1]);
+                    }
                 }
+
+                // 處理剩下的單節課
+                for (let pid of remainingPeriods) {
+                    const avail = getAvailableCarts(pid);
+                    if (avail.length === 0) {
+                        return { success: false, message: `第${pid}節的 1號及2號車 均已被借出。` };
+                    }
+                    assignments[pid] = avail[0];
+                }
+
+                return { success: true, assignments };
             };
 
             const handleSubmit = async (e) => {
@@ -349,13 +391,15 @@
                     return;
                 }
 
+                // 使用新的統一排班計畫
+                const plan = planAssignments(formData.date, formData.day, formData.periods, formData.subject, formData.className);
+                if (!plan.success) {
+                    showNotification(plan.message, 'error');
+                    return;
+                }
+
                 let newBookings = [];
                 for (let pid of formData.periods) {
-                    const assignment = assignCart(formData.date, formData.day, pid, formData.subject, formData.className);
-                    if (!assignment.success) {
-                        showNotification(`第${pid}節分配失敗：${assignment.message} (已取消全部預約)`, 'error');
-                        return;
-                    }
                     newBookings.push({
                         date: formData.date,
                         day: formData.day,
@@ -365,7 +409,7 @@
                         qty: formData.qty,
                         ta: formData.ta,
                         period: pid,
-                        cart: assignment.cart,
+                        cart: plan.assignments[pid],
                         isConfirmed: false
                     });
                 }
@@ -434,9 +478,9 @@
                 const cartToCheck = targetCart || booking.cart;
 
                 if (cartToCheck === '3號車') {
-                    const isGrade1To4Tech = /^[1-4]/.test(booking.className) && booking.subject.includes('科技');
-                    if (!isGrade1To4Tech) {
-                        showNotification('調動失敗：3號車僅限 1-4年級科技課 使用！', 'error');
+                    const isGrade2To6Tech = /^[2-6]/.test(booking.className) && booking.subject.includes('科技');
+                    if (!isGrade2To6Tech) {
+                        showNotification('調動失敗：3號車僅限 2-6年級科技課 使用！', 'error');
                         return;
                     }
                 }
@@ -465,6 +509,14 @@
                     console.error("調動失敗:", error);
                     showNotification(`調動失敗：${error.message}`, 'error');
                 }
+            };
+
+            const toggleCartVisibility = (cartLabel) => {
+                setVisibleCarts(prev => 
+                    prev.includes(cartLabel) 
+                        ? prev.filter(c => c !== cartLabel) 
+                        : [...prev, cartLabel]
+                );
             };
 
             const getWeekDates = (dateStr) => {
@@ -595,43 +647,23 @@
                 let isFull = false;
 
                 if (formData.day === '週末(不可借用)') {
-                availabilityMsg = "週末不提供借用服務，請選擇星期一至星期五的日期。";
-                isFull = true;
-                } else if (formData.periods.length === 0) {
-                availabilityMsg = "請點選欲借用的課節。";
-                } else {
-                const isGrade1To4Tech = /^[1-4]/.test(formData.className) && formData.subject.includes('科技');
-                let allSuccess = true;
-                let msgs = [];
-
-                formData.periods.forEach(pid => {
-                    const isBlackout = BLACKOUT_PERIODS[formData.day] && BLACKOUT_PERIODS[formData.day][pid];
-                    if (isBlackout) {
-                    msgs.push(`第${pid}節暫停借用`);
-                    allSuccess = false; return;
-                    }
-                    const usedCarts = bookings.filter(b => b.date === formData.date && b.period === pid && !b.isSystem).map(b => b.cart);
-                    const hasCart1 = !usedCarts.includes('1號車');
-                    const hasCart2 = !usedCarts.includes('2號車');
-                    const hasCart3 = !usedCarts.includes('3號車');
-
-                    if (isGrade1To4Tech) {
-                    if (!hasCart3) { msgs.push(`第${pid}節的3號車已滿`); allSuccess = false; }
-                    } else {
-                    if (!hasCart1 && !hasCart2) { msgs.push(`第${pid}節已額滿`); allSuccess = false; }
-                    }
-                });
-
-                if (!allSuccess) {
-                    availabilityMsg = "注意：" + msgs.join("，") + "，無法完成此連堂預約！";
+                    availabilityMsg = "週末不提供借用服務，請選擇星期一至星期五的日期。";
                     isFull = true;
+                } else if (formData.periods.length === 0) {
+                    availabilityMsg = "請點選欲借用的課節。";
                 } else {
-                    if (isGrade1To4Tech) {
-                    availabilityMsg = `目前選取的 ${formData.periods.length} 節課 3號車 尚可借用。`;
+                    const plan = planAssignments(formData.date, formData.day, formData.periods, formData.subject, formData.className);
+                    if (!plan.success) {
+                        availabilityMsg = `注意：${plan.message}`;
+                        isFull = true;
                     } else {
-                    availabilityMsg = `目前選取的 ${formData.periods.length} 節課尚有推車可借用。系統將自動安排。`;
+                        const isGrade2To6Tech = /^[2-6]/.test(formData.className) && formData.subject.includes('科技');
+                        if (isGrade2To6Tech) {
+                            availabilityMsg = `目前選取的 ${formData.periods.length} 節課 3號車 尚可借用。`;
+                        } else {
+                            availabilityMsg = `目前選取的 ${formData.periods.length} 節課尚有車輛可借用。系統將自動安排 (連堂將盡量安排同車)。`;
+                        }
                     }
-                }
                 }
 
                 return (
@@ -728,7 +760,8 @@
                             <li>教師可檢視及預約借用未來兩星期的課室平板電腦.每星期四下午4時會截數.</li>
                             <li>教師只可瀏覽本星期借用情況,並不設借用.(因已作安排)</li>
                             <li>供一至四年級課室借出的平板電腦為 1, 2號車。</li>
-                            <li>系統會自動為「1-4年級科技課」指派 3號車,暫不安排借出給其他課堂使用。</li>
+                            {/* 5. 修改第5項文字 */}
+                            <li>系統會自動為「2-6年級科技課」指派 3號車,暫不安排借出給其他課堂使用。</li>
                             <li>如借用節數已被安排，系統會檢視並提示其他車號(1,2號)能否借用。</li>
                             <li>「綜合課」、「生教課」、「課外活動」為特別課堂，暫不開放借用。</li>
                             <li>如特別活動急需使用平板電腦進行活動,請與「資訊科技及數字教育組」聯絡,本組因應情況盡量安排.</li>
@@ -864,19 +897,71 @@
             const renderSchedule = () => {
                 const weekDates = getWeekDates(viewDate);
 
+                // 2. 簡化版的顯示資訊卡片
+                const renderSimplifiedScheduleCard = (booking) => {
+                    let themeStyles = { bg: "bg-gray-100", border: "border-gray-200", text: "text-gray-800" };
+                    if (booking.cart === '1號車') themeStyles = { bg: "bg-blue-50", border: "border-blue-300", text: "text-blue-900" };
+                    if (booking.cart === '2號車') themeStyles = { bg: "bg-green-50", border: "border-green-300", text: "text-green-900" };
+                    if (booking.cart === '3號車') themeStyles = { bg: "bg-purple-50", border: "border-purple-300", text: "text-purple-900" };
+
+                    let secondLine = '';
+                    if (booking.cart === '3號車') {
+                        secondLine = `科任老師: ${booking.teacher}`;
+                    } else {
+                        if (booking.ta === 'Issac' || booking.ta === 'Ming') {
+                            secondLine = `ITRO: ${booking.ta}`;
+                        } else if (booking.ta === 'Stephanie') {
+                            secondLine = `ITRA: ${booking.ta}`;
+                        } else if (booking.ta) {
+                            secondLine = `TA: ${booking.ta}`;
+                        } else {
+                            secondLine = `科任老師: ${booking.teacher}`;
+                        }
+                    }
+
+                    return (
+                        <div key={booking.id} className={`p-2 rounded-lg border w-full flex flex-col justify-center shadow-sm min-h-[65px] mb-1 ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
+                            <div className="flex justify-between items-center text-sm font-bold mb-1">
+                                <span>{booking.className} {booking.subject}({booking.teacher})</span>
+                                <span className="ml-1 whitespace-nowrap">{booking.cart}</span>
+                            </div>
+                            <div className="text-sm font-medium opacity-90">
+                                {secondLine}
+                            </div>
+                        </div>
+                    );
+                };
+
                 return (
                 <div>
                     {renderDateSelector()}
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto w-full pb-4">
-                    <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-6 gap-4">
+                    <div className="flex flex-col xl:flex-row xl:justify-between items-start xl:items-center mb-6 gap-4">
                         <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                        <Calendar className="mr-2 text-blue-600 flex-shrink-0" size={24} />
-                        <span>每週平板電腦(iPad) 借用總表</span>
+                            <Calendar className="mr-2 text-blue-600 flex-shrink-0" size={24} />
+                            <span>每週平板電腦(iPad) 借用總表</span>
                         </h2>
-                        <div className="flex flex-wrap gap-2 text-sm font-medium">
-                        <span className="flex items-center text-blue-700 bg-blue-50 px-2 py-1 rounded"><Truck size={16} className="mr-1" /> 1號車</span>
-                        <span className="flex items-center text-green-700 bg-green-50 px-2 py-1 rounded"><Truck size={16} className="mr-1" /> 2號車</span>
-                        <span className="flex items-center text-purple-700 bg-purple-50 px-2 py-1 rounded"><Truck size={16} className="mr-1" /> 3號車 (1-4年級科技專用)</span>
+                        {/* 7. 車號過濾切換按鈕 */}
+                        <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                            <span className="text-gray-600 mr-2 font-bold whitespace-nowrap">顯示/隱藏：</span>
+                            <button
+                                onClick={() => toggleCartVisibility('1號車')}
+                                className={`flex items-center px-3 py-1.5 rounded transition-colors border-2 ${visibleCarts.includes('1號車') ? 'text-blue-700 bg-blue-100 border-blue-300' : 'text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+                            >
+                                <Truck size={16} className="mr-1" /> 1號車
+                            </button>
+                            <button
+                                onClick={() => toggleCartVisibility('2號車')}
+                                className={`flex items-center px-3 py-1.5 rounded transition-colors border-2 ${visibleCarts.includes('2號車') ? 'text-green-700 bg-green-100 border-green-300' : 'text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+                            >
+                                <Truck size={16} className="mr-1" /> 2號車
+                            </button>
+                            <button
+                                onClick={() => toggleCartVisibility('3號車')}
+                                className={`flex items-center px-3 py-1.5 rounded transition-colors border-2 ${visibleCarts.includes('3號車') ? 'text-purple-700 bg-purple-100 border-purple-300' : 'text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+                            >
+                                <Truck size={16} className="mr-1" /> 3號車 (2-6年級科技課專用)
+                            </button>
                         </div>
                     </div>
 
@@ -935,16 +1020,24 @@
                                 return (
                                     <td
                                     key={`${wd.name}-${period.id}`}
-                                    className="border border-black p-2 align-top h-24 bg-gray-50 transition-colors"
+                                    className="border border-black p-2 align-top bg-gray-50 transition-colors"
                                     >
-                                    <div className="space-y-2">
-                                        {cellBookings.map(booking => {
-                                        let themeStyles = { bg: "bg-gray-100", border: "border-gray-200" };
-                                        if (booking.cart === '1號車') themeStyles = { bg: "bg-blue-50", border: "border-blue-200" };
-                                        if (booking.cart === '2號車') themeStyles = { bg: "bg-green-50", border: "border-green-200" };
-                                        if (booking.cart === '3號車') themeStyles = { bg: "bg-purple-50", border: "border-purple-200" };
+                                    {/* 2. 確保3輛車位置固定，空置亦留空 */}
+                                    <div className="flex flex-col h-full space-y-1 min-h-[200px]">
+                                        {['1號車', '2號車', '3號車'].map((cartLabel) => {
+                                            // 過濾未被選擇顯示的車號
+                                            if (!visibleCarts.includes(cartLabel)) return null;
 
-                                        return renderBookingCard(booking, themeStyles, true);
+                                            const booking = cellBookings.find(b => b.cart === cartLabel);
+                                            if (!booking) {
+                                                // 預留對應方塊的空間
+                                                return (
+                                                    <div key={`${cartLabel}-empty`} className="w-full rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center min-h-[65px] text-transparent select-none">
+                                                        {cartLabel}
+                                                    </div>
+                                                );
+                                            }
+                                            return renderSimplifiedScheduleCard(booking);
                                         })}
                                     </div>
                                     </td>
@@ -1102,8 +1195,9 @@
                 {renderAdminModal()}
                 {renderUnlockModal()}
                 {renderEditModal()}
-                <header className="max-w-5xl mx-auto mb-6 text-center relative">
-                    <div className="absolute right-0 top-0 sm:right-2 sm:top-2">
+                <header className="max-w-5xl mx-auto mb-6 text-center relative pt-4 sm:pt-0">
+                    {/* 桌面版管理員登入按鈕保持原位 */}
+                    <div className="absolute right-0 top-0 sm:right-2 sm:top-2 hidden sm:block">
                     {isAdmin ? (
                         <button onClick={() => { setIsAdmin(false); showNotification('管理員已登出', 'success'); }} className="flex items-center text-xs sm:text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full transition-colors shadow-sm">
                         <Unlock size={14} className="mr-1" /> 管理員已登入
@@ -1114,10 +1208,22 @@
                         </button>
                     )}
                     </div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight pt-10 sm:pt-0">
-                    <span className="block">觀塘官立小學(秀明道)</span>
-                    <span className="block mt-1">平板電腦借用系統</span>
+                    <h1 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">
+                        <span className="block">觀塘官立小學(秀明道)</span>
+                        <span className="block mt-1">平板電腦借用系統</span>
                     </h1>
+                    {/* 4. 手機版管理員登入按鈕移至文字下一列靠右 */}
+                    <div className="sm:hidden flex justify-end mt-2 pr-2">
+                        {isAdmin ? (
+                            <button onClick={() => { setIsAdmin(false); showNotification('管理員已登出', 'success'); }} className="flex items-center text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full transition-colors shadow-sm">
+                            <Unlock size={12} className="mr-1" /> 管理員已登入
+                            </button>
+                        ) : (
+                            <button onClick={() => setShowAdminModal(true)} className="flex items-center text-xs font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors shadow-sm">
+                            <Lock size={12} className="mr-1" /> 管理員登入
+                            </button>
+                        )}
+                    </div>
                 </header>
 
                 <div className="max-w-5xl mx-auto mb-6 px-2 flex justify-center">

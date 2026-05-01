@@ -533,9 +533,6 @@
                 const inputHex = stringToHex(loginPassword);
                 
                 // 比對的字串皆為密碼明文的 16進位編碼，隱藏原始密碼
-                // '536d722d3132333435' = Smr-12345
-                // '536d722d32353236'   = Smr-2526
-                // '536d722d32363038'   = Smr-2608
 
                 if (inputHex === '536d722d3132333435') {
                     setLoginRole('user');

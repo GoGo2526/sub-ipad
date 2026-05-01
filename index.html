@@ -55,6 +55,11 @@
         const db = getFirestore(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'ktgps-tablet-app';
 
+        // --- Firebase 路徑輔助函數 (自動適應 Github Pages 或 本地環境) ---
+        const isLocalDeploy = typeof __app_id === 'undefined';
+        const getCollRef = () => isLocalDeploy ? collection(db, 'bookings') : collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
+        const getDocRef = (id) => isLocalDeploy ? doc(db, 'bookings', String(id)) : doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(id));
+
         // --- 常數設定 ---
         const DAYS = ['星期一', '星期二', '星期三', '星期四', '星期五'];
         const PERIODS = [
@@ -257,8 +262,7 @@
 
             useEffect(() => {
                 if (!user) return;
-                const collRef = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
-                const unsubscribe = onSnapshot(collRef, (snapshot) => {
+                const unsubscribe = onSnapshot(getCollRef(), (snapshot) => {
                     const cloudData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setDbBookings(cloudData);
                 }, (error) => {
@@ -368,7 +372,7 @@
 
                 try {
                     for (let b of newBookings) {
-                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'), b);
+                        await addDoc(getCollRef(), b);
                     }
                     showNotification(`成功借用！已為您安排 ${formData.periods.length} 節課堂。`);
                     setFormData(prev => ({ ...prev, className: '', subject: '', teacher: '', ta: '', periods: [1] }));
@@ -388,7 +392,7 @@
                     return;
                 }
                 try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(id)));
+                    await deleteDoc(getDocRef(id));
                     showNotification('管理員已刪除該借用紀錄。', 'success');
                 } catch (error) {
                     console.error("刪除失敗:", error);
@@ -402,7 +406,7 @@
                     return;
                 }
                 try {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(id)), { isConfirmed: true });
+                    await updateDoc(getDocRef(id), { isConfirmed: true });
                     showNotification('已確認借用，該課堂現在不能再作改動。', 'success');
                 } catch (error) {
                     console.error("確認失敗:", error);
@@ -450,7 +454,7 @@
                 }
 
                 try {
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(bookingId)), {
+                    await updateDoc(getDocRef(bookingId), {
                         date: newDate,
                         day: newDay,
                         period: newPeriod,
@@ -529,7 +533,7 @@
                                     e.stopPropagation();
                                     if (isAdmin) {
                                     if (!user) { showNotification('尚未登入', 'error'); return; }
-                                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(booking.id)), { isConfirmed: false })
+                                    updateDoc(getDocRef(booking.id), { isConfirmed: false })
                                         .then(() => showNotification('已解除確認，現在可作修改。', 'success'))
                                         .catch((error) => showNotification(`解除確認失敗：${error.message}`, 'error'));
                                     } else {
@@ -999,7 +1003,7 @@
                         if (adminPassword === 'Smr-2526') {
                         try {
                             if (!user) { showNotification('尚未登入', 'error'); return; }
-                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(unlockTargetId)), { isConfirmed: false });
+                            await updateDoc(getDocRef(unlockTargetId), { isConfirmed: false });
                             setUnlockTargetId(null);
                             setAdminPassword('');
                             showNotification('已解除確認，現在可以修改、移動或刪除該課堂。', 'success');
@@ -1040,7 +1044,7 @@
                         if (!user) { showNotification('尚未登入', 'error'); return; }
                         const { id, ...updateData } = editTargetBooking;
                         try {
-                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'bookings', String(id)), updateData);
+                        await updateDoc(getDocRef(id), updateData);
                         setEditTargetBooking(null);
                         showNotification('課堂資料已更新', 'success');
                         } catch (error) {

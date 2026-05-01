@@ -1177,6 +1177,11 @@
                         e.preventDefault();
                         if (!user) { showNotification('尚未登入', 'error'); return; }
                         
+                        if (BLACKOUT_PERIODS[editTargetBooking.day] && BLACKOUT_PERIODS[editTargetBooking.day][editTargetBooking.period]) {
+                            showNotification('無法移至特別課堂時段！', 'error');
+                            return;
+                        }
+
                         const conflict = bookings.some(b =>
                             b.period === editTargetBooking.period &&
                             b.cart === editTargetBooking.cart &&
@@ -1235,6 +1240,12 @@
                             <select value={editTargetBooking.ta} onChange={e => setEditTargetBooking({ ...editTargetBooking, ta: e.target.value })} className="w-full p-2 border rounded-lg outline-none bg-white">
                             <option value="">無</option>
                             {TAS.map(ta => <option key={ta} value={ta}>{ta}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-sm font-medium text-gray-700">節數</label>
+                            <select value={editTargetBooking.period} onChange={e => setEditTargetBooking({ ...editTargetBooking, period: parseInt(e.target.value) })} className="w-full p-2 border rounded-lg outline-none bg-white">
+                            {PERIODS.filter(p => !p.isBreak).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
                         </div>

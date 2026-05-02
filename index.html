@@ -11,12 +11,28 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 列印專屬設定：隱藏多餘版面、重設邊界、縮小文字以符合 A4 直式 */
+        /* 列印專屬設定：設定 A4 直式與四邊合適 margin，強制不切斷資料列 */
         @media print {
-            @page { size: A4 portrait; margin: 0; }
-            body { padding: 0 !important; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            @page { 
+                size: A4 portrait; 
+                margin: 15mm; /* 每一頁上下左右都預留 15mm 列印邊距 */
+            }
+            body { 
+                padding: 0 !important; 
+                background: white !important; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
             .print-hide { display: none !important; }
             .print-overflow-visible { overflow: visible !important; }
+            
+            /* 分頁保護設定：確保「節數」為分割位，不夠時安排下一頁 */
+            table { page-break-inside: auto !important; }
+            tr { page-break-inside: avoid !important; break-inside: avoid !important; page-break-after: auto !important; }
+            td, th { page-break-inside: avoid !important; break-inside: avoid !important; }
+            thead { display: table-header-group !important; }
+            tfoot { display: table-footer-group !important; }
+
             .schedule-table { min-width: 100% !important; width: 100% !important; table-layout: fixed !important; }
             .schedule-table th, .schedule-table td { padding: 2px !important; }
             .schedule-table .font-black.text-3xl { font-size: 14px !important; }
@@ -24,10 +40,10 @@
             .schedule-table .min-h-\\[70px\\], .schedule-table .min-h-\\[65px\\] { min-height: 40px !important; }
             .schedule-table .w-\\[56px\\] { width: 30px !important; }
             .schedule-table svg { width: 10px !important; height: 10px !important; }
-            
-            /* 保證同一節不會被跨頁切斷 */
-            tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-            thead { display: table-header-group !important; }
+            .schedule-table .text-sm { font-size: 10px !important; }
+            .schedule-table .text-xs { font-size: 9px !important; }
+            .schedule-table .text-\\[11px\\] { font-size: 9px !important; }
+            .schedule-table .text-\\[13px\\] { font-size: 10px !important; }
         }
     </style>
     <!-- 引入 SheetJS 用於匯出標準 Excel (.xlsx) 以消除格式警告 -->
@@ -1273,10 +1289,6 @@
                     <div className="print-overflow-visible overflow-x-auto">
                     <table className="w-full border-collapse border border-black min-w-[1000px] table-fixed schedule-table">
                         <thead className="table-header-group">
-                        {/* 加入這行隱藏的列，在列印時作為每頁上方的 Margin，從而避開 @page { margin: 0 } 帶來的無邊界問題 */}
-                        <tr className="hidden print:table-row">
-                            <th colSpan={weekDates.length + 1} className="h-[15mm] border-none bg-white"></th>
-                        </tr>
                         <tr>
                             <th className="border border-black p-2 bg-blue-100 text-center w-36 text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap">
                             節數/時間

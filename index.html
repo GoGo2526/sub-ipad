@@ -238,6 +238,7 @@
             const [adminPassword, setAdminPassword] = useState('');
             const [editTargetBooking, setEditTargetBooking] = useState(null);
             const [assignWorkerTarget, setAssignWorkerTarget] = useState(null); // 用於儲存要指派職工的課堂
+            const [weekStatuses, setWeekStatuses] = useState({}); // 儲存各週是否已完成編排的狀態
 
             // 根據星期四下午4時後自動顯示下星期的邏輯
             const defaultDateStr = (() => {
@@ -302,14 +303,28 @@
 
             useEffect(() => {
                 if (!user) return;
-                const unsubscribe = onSnapshot(getCollRef(), (snapshot) => {
+                const unsubscribeBookings = onSnapshot(getCollRef(), (snapshot) => {
                     const cloudData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     setDbBookings(cloudData);
                 }, (error) => {
                     console.error("讀取資料失敗:", error);
                 });
 
-                return () => unsubscribe();
+                const getWeekStatusCollRef = () => isLocalDeploy ? collection(db, 'week_status') : collection(db, 'artifacts', appId, 'public', 'data', 'week_status');
+                const unsubscribeWeekStatus = onSnapshot(getWeekStatusCollRef(), (snapshot) => {
+                    const statuses = {};
+                    snapshot.forEach(doc => {
+                        statuses[doc.id] = doc.data().isArranged;
+                    });
+                    setWeekStatuses(statuses);
+                }, (error) => {
+                    console.error("讀取週狀態失敗:", error);
+                });
+
+                return () => {
+                    unsubscribeBookings();
+                    unsubscribeWeekStatus();
+                };
             }, [user]);
 
             const showNotification = (message, type = 'success') => {
@@ -560,6 +575,17 @@
                         ? prev.filter(c => c !== cartLabel) 
                         : [...prev, cartLabel]
                 );
+            };
+
+            const handleWeekStatusToggle = async (mondayStr, currentValue) => {
+                if (!user) return;
+                try {
+                    const ref = isLocalDeploy ? doc(db, 'week_status', mondayStr) : doc(db, 'artifacts', appId, 'public', 'data', 'week_status', mondayStr);
+                    await setDoc(ref, { isArranged: !currentValue }, { merge: true });
+                } catch (err) {
+                    console.error("更新週狀態失敗:", err);
+                    showNotification(`更新狀態失敗：${err.message}`, 'error');
+                }
             };
 
             const handleLogin = (e) => {
@@ -980,6 +1006,8 @@
 
             const renderSchedule = (mode = 'normal') => {
                 const weekDates = getWeekDates(viewDate);
+                const currentMondayStr = weekDates[0].dateStr;
+                const isWeekArranged = weekStatuses[currentMondayStr] || false;
 
                 let titleText = "每週平板電腦(iPad) 借用總表";
                 if (mode === 'duty') titleText = "安排職務總表(校務處)";
@@ -1020,7 +1048,7 @@
                                 {/* 右半邊: 職工代號 / 電腦室 */}
                                 <div className="w-[56px] flex-shrink-0 flex items-center justify-center border-l border-gray-300 border-opacity-40 pl-1 overflow-hidden">
                                     {booking.workerCode ? (
-                                        <span className="font-black text-3xl text-center leading-none">
+                                        <span className="font-black text-[40px] text-center leading-none">
                                             {booking.workerCode}
                                         </span>
                                     ) : (
@@ -1073,8 +1101,24 @@
                                 <Calendar className="mr-2 text-blue-600 flex-shrink-0" size={24} />
                                 <span>{titleText}</span>
                             </div>
-                            <span className="text-sm sm:text-xl font-bold text-gray-800 sm:ml-2 mt-1 sm:mt-0">
+                            <span className="text-sm sm:text-xl font-bold text-gray-800 sm:ml-2 mt-1 sm:mt-0 flex flex-wrap items-center">
                                 ({generateCurrentWeekMsg(viewDate)})
+                                {mode === 'normal' && (loginRole === 'admin' || loginRole === 'office') && (
+                                    <label className="ml-0 sm:ml-4 mt-2 sm:mt-0 flex items-center text-sm font-bold text-blue-800 cursor-pointer bg-blue-50 px-2 py-1 rounded border border-blue-200 shadow-sm whitespace-nowrap">
+                                        <input
+                                            type="checkbox"
+                                            className="mr-1.5 w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                                            checked={isWeekArranged}
+                                            onChange={() => handleWeekStatusToggle(currentMondayStr, isWeekArranged)}
+                                        />
+                                        已完成本週借用安排
+                                    </label>
+                                )}
+                                {(mode === 'duty' || mode === 'office') && (
+                                    <span className={`ml-0 sm:ml-3 mt-2 sm:mt-0 text-sm sm:text-lg whitespace-nowrap ${isWeekArranged ? 'text-blue-600' : 'text-red-500'}`}>
+                                        {isWeekArranged ? '(可安排職工值崗)' : '(課堂編排尚未完成,請耐心等待)'}
+                                    </span>
+                                )}
                             </span>
                         </h2>
                         {/* 7. 車號過濾切換按鈕 */}
@@ -1503,7 +1547,8 @@
                             }`}
                         >
                             <List className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
-                            <span>安排職務(校務處)</span>
+                            <span className="sm:hidden">安排職務</span>
+                            <span className="hidden sm:inline">安排職務(校務處)</span>
                         </button>
                         <button
                             onClick={() => setActiveTab('office_schedule')}
@@ -1511,7 +1556,7 @@
                             }`}
                         >
                             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
-                            <span className="sm:hidden">總表(校務)</span>
+                            <span className="sm:hidden">校務處</span>
                             <span className="hidden sm:inline">本週總表(校務處)</span>
                         </button>
                         </>

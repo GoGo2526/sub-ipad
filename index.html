@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KTGPS 平板電腦借用系統</title>
+    <title>平板電腦借用系統</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -38,7 +38,6 @@
             .schedule-table .font-black.text-3xl { font-size: 14px !important; }
             .schedule-table .text-\\[40px\\] { font-size: 16px !important; }
             .schedule-table .min-h-\\[70px\\], .schedule-table .min-h-\\[65px\\] { min-height: 40px !important; }
-            .schedule-table .w-\\[56px\\] { width: 30px !important; }
             .schedule-table svg { width: 10px !important; height: 10px !important; }
             .schedule-table .text-sm { font-size: 10px !important; }
             .schedule-table .text-xs { font-size: 9px !important; }
@@ -46,8 +45,8 @@
             .schedule-table .text-\\[13px\\] { font-size: 10px !important; }
         }
     </style>
-    <!-- 引入 SheetJS 用於匯出標準 Excel (.xlsx) 以消除格式警告 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 引入 ExcelJS 用於匯出原生標準 Excel (.xlsx) 以消除格式警告並支援橫印與邊界設定 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <!-- 引入 React 與 ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -631,7 +630,11 @@
                 }
             };
 
-            const handleExportExcel = () => {
+            const handleExportExcel = async () => {
+                if (typeof ExcelJS === 'undefined') {
+                    showNotification('Excel 匯出庫尚未載入，請稍後再試', 'error');
+                    return;
+                }
                 const weekDates = getWeekDates(viewDate);
                 const printDate = getPrintDateString();
                 
@@ -643,31 +646,65 @@
                 
                 const weekNum = getISOWeek(new Date(weekDates[0].dateStr));
                 const weekMsg = generateCurrentWeekMsg(viewDate);
-                
-                let tableHtml = `<table border="1">
-                    <thead>
-                        <tr>
-                            <th colspan="3">觀塘官立小學(秀明道)</th>
-                            <th colspan="${weekDates.length - 2}">列印日期: ${printDate}</th>
-                        </tr>
-                        <tr>
-                            <th colspan="${weekDates.length + 1}">每週平板電腦(iPad)借用總表 (${weekMsg})</th>
-                        </tr>
-                        <tr>
-                            <th>節數/時間</th>`;
-                weekDates.forEach(wd => {
-                    tableHtml += `<th>${wd.display} (${wd.name})</th>`;
+
+                const wb = new ExcelJS.Workbook();
+                const ws = wb.addWorksheet('總表', {
+                    pageSetup: {
+                        paperSize: 9, // A4
+                        orientation: 'landscape', // 預設橫向列印
+                        margins: {
+                            left: 0.6, right: 0.6,
+                            top: 0.6, bottom: 0.6,
+                            header: 0.3, footer: 0.3
+                        }
+                    }
                 });
-                tableHtml += `</tr>
-                    </thead>
-                    <tbody>`;
+
+                // 1. 版頭：學校名稱與列印日期
+                ws.mergeCells(1, 1, 1, weekDates.length + 1);
+                const titleRow1 = ws.getRow(1);
+                titleRow1.getCell(1).value = `觀塘官立小學(秀明道)                                            列印日期: ${printDate}`;
+                titleRow1.getCell(1).font = { bold: true, size: 14 };
                 
+                // 2. 版頭：總表名稱與週次
+                ws.mergeCells(2, 1, 2, weekDates.length + 1);
+                const titleRow2 = ws.getRow(2);
+                titleRow2.getCell(1).value = `每週平板電腦(iPad)借用總表 (${weekMsg})`;
+                titleRow2.getCell(1).font = { bold: true, size: 16 };
+                titleRow2.getCell(1).alignment = { horizontal: 'center' };
+
+                ws.addRow([]); // 留空第3行
+
+                // 3. 表格標題行 (Row 4)
+                const headerRowData = ['節數/時間', ...weekDates.map(wd => `${wd.display} (${wd.name})`)];
+                const headerRow = ws.addRow(headerRowData);
+                headerRow.eachCell((cell) => {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } };
+                    cell.font = { bold: true };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                });
+
+                // 設定欄寬
+                ws.getColumn(1).width = 15;
+                for(let i = 0; i < weekDates.length; i++) {
+                    ws.getColumn(i + 2).width = 28;
+                }
+
+                // 4. 表格資料
                 PERIODS.forEach(period => {
                     if (period.isBreak) {
-                        tableHtml += `<tr><td colspan="${weekDates.length + 1}">${period.name} (${period.time})</td></tr>`;
+                        const row = ws.addRow([`${period.name} (${period.time})`]);
+                        ws.mergeCells(row.number, 1, row.number, weekDates.length + 1);
+                        row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
+                        row.getCell(1).font = { bold: true };
+                        row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+                        row.getCell(1).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                         return;
                     }
-                    tableHtml += `<tr><td>${period.name}<br/>${period.time}</td>`;
+
+                    const rowData = [`${period.name}\n${period.time}`];
+                    
                     weekDates.forEach(wd => {
                         const cellBookings = bookings.filter(b => 
                             (b.isSystem && b.day === wd.name && b.period === period.id) ||
@@ -678,28 +715,52 @@
                         const isBlackout = cellBookings.some(b => b.isSystem);
                         if (isBlackout) {
                             const remark = cellBookings.find(b => b.isSystem).remark;
-                            tableHtml += `<td>${remark}</td>`;
+                            rowData.push({ text: remark, isBlackout: true });
                         } else {
-                            let cellText = "";
+                            let cellTextParts = [];
                             ['1號車', '2號車', '3號車'].filter(c => visibleCarts.includes(c)).forEach(cartLabel => {
                                 const booking = cellBookings.find(b => b.cart === cartLabel);
                                 if (booking) {
                                     let workerStr = booking.workerCode ? ` [職工:${booking.workerCode}]` : "";
                                     let taStr = booking.ta ? ` (TA:${booking.ta})` : "";
-                                    cellText += `${cartLabel}: ${booking.className} ${booking.subject} (${booking.teacher})${workerStr}${taStr}<br/>`;
+                                    cellTextParts.push(`${cartLabel}: ${booking.className} ${booking.subject} (${booking.teacher})${workerStr}${taStr}`);
                                 }
                             });
-                            tableHtml += `<td>${cellText}</td>`;
+                            rowData.push({ text: cellTextParts.join('\n\n'), isBlackout: false });
                         }
                     });
-                    tableHtml += `</tr>`;
-                });
-                tableHtml += `</tbody></table>`;
 
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = tableHtml;
-                const wb = window.XLSX.utils.table_to_book(tempDiv.querySelector('table'), { raw: true });
-                window.XLSX.writeFile(wb, `平板電腦總表-${cartStr}-第${weekNum}週_${printDate}.xlsx`);
+                    const newRow = ws.addRow(rowData.map(r => typeof r === 'string' ? r : r.text));
+                    
+                    newRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
+                    newRow.getCell(1).font = { bold: true };
+                    newRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    newRow.getCell(1).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+
+                    for (let i = 0; i < weekDates.length; i++) {
+                        const cell = newRow.getCell(i + 2);
+                        const info = rowData[i + 1];
+                        cell.alignment = { vertical: 'top', wrapText: true };
+                        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                        if (info.isBlackout) {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF5DC' } };
+                            cell.font = { bold: true };
+                            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                        }
+                    }
+                });
+
+                // 產生 Blob 檔案並下載，這樣副檔名不會再報錯
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `平板電腦總表-${cartStr}-第${weekNum}週_${printDate}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             };
 
             const handlePrint = () => {
@@ -1289,6 +1350,10 @@
                     <div className="print-overflow-visible overflow-x-auto">
                     <table className="w-full border-collapse border border-black min-w-[1000px] table-fixed schedule-table">
                         <thead className="table-header-group">
+                        {/* 加入這行隱藏的列，在列印時作為每頁上方的 Margin，從而避開 @page { margin: 0 } 帶來的無邊界問題 */}
+                        <tr className="hidden print:table-row">
+                            <th colSpan={weekDates.length + 1} className="h-[15mm] border-none bg-white"></th>
+                        </tr>
                         <tr>
                             <th className="border border-black p-2 bg-blue-100 text-center w-36 text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap">
                             節數/時間
@@ -1314,26 +1379,29 @@
                             );
                             }
 
-                            // 因應揀選車號的多少自動調整節數及時間的文字大小
-                            let nameSizeClass = "text-base sm:text-xl print:text-[14px]";
-                            let timeSizeClass = "text-sm sm:text-base print:text-[12px]";
-                            let cellPaddingClass = "p-2 sm:p-4 print:p-1";
+                            // 因應揀選車號的多少自動調整節數及時間的文字大小和格子寬度
+                            let nameSizeClass = "text-xl sm:text-2xl print:text-base";
+                            let timeSizeClass = "text-base sm:text-lg print:text-sm";
+                            let cellPaddingClass = "p-3 sm:p-4 print:p-2";
+                            let colWidthClass = "w-32 sm:w-40 print:w-28";
 
                             if (visibleCarts.length === 2) {
-                                nameSizeClass = "text-sm sm:text-base print:text-[12px]";
-                                timeSizeClass = "text-xs sm:text-sm print:text-[10px]";
-                                cellPaddingClass = "p-1.5 sm:p-2 print:p-0.5";
+                                nameSizeClass = "text-base sm:text-lg print:text-sm";
+                                timeSizeClass = "text-xs sm:text-sm print:text-xs";
+                                cellPaddingClass = "p-2 sm:p-3 print:p-1";
+                                colWidthClass = "w-24 sm:w-28 print:w-20";
                             } else if (visibleCarts.length === 1) {
-                                nameSizeClass = "text-xs sm:text-sm print:text-[10px]";
-                                timeSizeClass = "text-[10px] sm:text-xs print:text-[8px]";
+                                nameSizeClass = "text-xs sm:text-sm print:text-[11px] leading-tight";
+                                timeSizeClass = "text-[10px] sm:text-xs print:text-[9px] leading-tight";
                                 cellPaddingClass = "p-1 sm:p-1.5 print:p-0.5";
+                                colWidthClass = "w-16 sm:w-20 print:w-16";
                             }
 
                             return (
                             <tr key={period.id} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                                <td className={`border border-black ${cellPaddingClass} bg-gray-200 font-medium text-center align-middle w-36`}>
-                                <div className={`font-bold mb-0.5 text-gray-800 whitespace-nowrap ${nameSizeClass}`}>{period.name}</div>
-                                <div className={`text-gray-600 whitespace-nowrap ${timeSizeClass}`}>
+                                <td className={`border border-black ${cellPaddingClass} bg-gray-200 font-medium text-center align-middle ${colWidthClass} transition-all duration-300`}>
+                                <div className={`font-bold mb-0.5 text-gray-800 whitespace-nowrap ${nameSizeClass} transition-all duration-300`}>{period.name}</div>
+                                <div className={`text-gray-600 whitespace-nowrap ${timeSizeClass} transition-all duration-300`}>
                                     <span>{period.time}</span>
                                 </div>
                                 </td>
@@ -1663,8 +1731,8 @@
                     </div>
                 </header>
 
-                <div className="max-w-5xl mx-auto mb-6 px-2 flex justify-center print-hide">
-                    <div className="inline-flex flex-row bg-gray-200 rounded-lg p-1 gap-1 max-w-full overflow-x-auto scrollbar-hide snap-x">
+                <div className="max-w-5xl mx-auto mb-6 px-2 print-hide">
+                    <div className="flex flex-row bg-gray-200 rounded-lg p-1 gap-1 w-max max-w-full mx-auto overflow-x-auto scrollbar-hide snap-x">
                     {loginRole !== 'office' && (
                         <>
                         <button
@@ -1693,7 +1761,7 @@
                         }`}
                     >
                         <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
-                        <span className="sm:hidden">總表(校務處)</span>
+                        <span className="sm:hidden">總表(課室)</span>
                         <span className="hidden sm:inline">本週總表</span>
                     </button>
                     {(loginRole === 'admin' || loginRole === 'office') && (
@@ -1713,7 +1781,7 @@
                             }`}
                         >
                             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
-                            <span className="sm:hidden">校務處</span>
+                            <span className="sm:hidden">總表(校務處)</span>
                             <span className="hidden sm:inline">本週總表(校務處)</span>
                         </button>
                         </>

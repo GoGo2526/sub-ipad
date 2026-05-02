@@ -767,7 +767,7 @@
                 URL.revokeObjectURL(url);
             };
 
-const handleExportOfficeExcel = async () => {
+            const handleExportOfficeExcel = async () => {
                 if (typeof ExcelJS === 'undefined') {
                     showNotification('Excel 匯出庫尚未載入，請稍後再試', 'error');
                     return;
@@ -897,12 +897,7 @@ const handleExportOfficeExcel = async () => {
                 URL.revokeObjectURL(url);
             };
 
-
-
-
-
-
- const handlePrint = () => {
+            const handlePrint = () => {
                 window.print();
             };
 

@@ -500,16 +500,16 @@
                     return;
                 }
 
-                // 新增：檢查同一班級是否在同一天同一節重複借用
+                // 新增：檢查同一班級是否在同一天同一節重複借用 (檢視不同車號會否同一節出現在同一班)
                 for (let pid of formData.periods) {
-                    const isDuplicateClassBooking = bookings.some(b => 
+                    const duplicateClassBooking = bookings.find(b => 
                         !b.isSystem && 
                         b.period === pid && 
                         b.className === formData.className &&
                         (b.date === formData.date || (b.isRecurring && b.day === formData.day))
                     );
-                    if (isDuplicateClassBooking) {
-                        showNotification(`借用失敗：${formData.className} 班於第${pid}節已預約了平板電腦，不能重複借用。`, 'error');
+                    if (duplicateClassBooking) {
+                        showNotification(`借用失敗：${formData.className} 班於第${pid}節已預約了 ${duplicateClassBooking.cart}，不同車號不能在同一節出現在同一班。`, 'error');
                         return;
                     }
 

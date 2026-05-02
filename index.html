@@ -755,6 +755,7 @@
                     }
                 });
 
+                // 產生 Blob 檔案並下載，這樣副檔名不會再報錯
                 const buffer = await wb.xlsx.writeBuffer();
                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 const url = URL.createObjectURL(blob);
@@ -773,38 +774,32 @@
                     return;
                 }
                 const weekDates = getWeekDates(viewDate);
+                const printDate = getPrintDateString();
                 const weekNum = getISOWeek(new Date(weekDates[0].dateStr));
-                const weekMsg = generateCurrentWeekMsg(viewDate); // 格式如: 第19週: 5月4日 至 5月8日
+                const weekMsg = generateCurrentWeekMsg(viewDate);
                 
                 const d = new Date();
                 const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
-                const z = n => ('0' + n).slice(-2);
-                const fileDateStr = `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}`;
 
                 const wb = new ExcelJS.Workbook();
                 const ws = wb.addWorksheet('校務處總表', {
                     pageSetup: {
                         paperSize: 9, // A4
-                        orientation: 'landscape', // A4 橫向
-                        fitToPage: true,
-                        fitToWidth: 1,
-                        fitToHeight: 0,
+                        orientation: 'portrait', 
                         margins: {
-                            left: 0.4, right: 0.4,
-                            top: 0.4, bottom: 0.4,
+                            left: 0.6, right: 0.6,
+                            top: 0.6, bottom: 0.6,
                             header: 0.3, footer: 0.3
                         }
                     }
                 });
 
-                // 設定三欄（列）的足夠寬度以平排顯示各車號資料
-                ws.columns = [
-                    { width: 45 },
-                    { width: 45 },
-                    { width: 45 }
-                ];
+                // 設定三欄的足夠寬度以容納各車號資料
+                ws.getColumn(1).width = 32;
+                ws.getColumn(2).width = 32;
+                ws.getColumn(3).width = 32;
 
-                // 1. 版頭：學校名稱 與 列印日期 (靠右)
+                // 1. 版頭：學校名稱與列印日期
                 const titleRow1 = ws.addRow(['觀塘官立小學(秀明道)', '', `(列印日期: ${printDateFormatted})`]);
                 ws.mergeCells(titleRow1.number, 1, titleRow1.number, 2);
                 titleRow1.getCell(1).font = { bold: true, size: 14 };
@@ -822,20 +817,18 @@
                 // 迴圈寫入每日及每節內容
                 weekDates.forEach(wd => {
                     // 日期 (星期一)
-                    const dateRow = ws.addRow([`日期 (${wd.name})`]);
+                    const dateRow = ws.addRow([`${wd.dateStr} (${wd.name})`]);
                     ws.mergeCells(dateRow.number, 1, dateRow.number, 3);
-                    dateRow.getCell(1).font = { bold: true, size: 12 };
-                    dateRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } }; 
-                    dateRow.getCell(1).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                    dateRow.font = { bold: true, size: 12 };
+                    dateRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } }; 
 
                     PERIODS.forEach(period => {
                         if (period.isBreak) {
                             // 小息 (9:45 - 10:05)
                             const breakRow = ws.addRow([`${period.name} (${period.time})`]);
                             ws.mergeCells(breakRow.number, 1, breakRow.number, 3);
-                            breakRow.getCell(1).font = { bold: true };
-                            breakRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
-                            breakRow.getCell(1).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                            breakRow.font = { bold: true };
+                            breakRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
                             ws.addRow([]); // 休息後空行
                             return;
                         }
@@ -843,9 +836,8 @@
                         // 第1節 (8:35 - 9:10)
                         const periodRow = ws.addRow([`${period.name} (${period.time})`]);
                         ws.mergeCells(periodRow.number, 1, periodRow.number, 3);
-                        periodRow.getCell(1).font = { bold: true };
-                        periodRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
-                        periodRow.getCell(1).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                        periodRow.font = { bold: true };
+                        periodRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
 
                         const cellBookings = bookings.filter(b => 
                             (b.isSystem && b.day === wd.name && b.period === period.id) ||
@@ -858,12 +850,8 @@
                             const remark = cellBookings.find(b => b.isSystem).remark;
                             const bRow = ws.addRow([`暫停借用 : ${remark}`]);
                             ws.mergeCells(bRow.number, 1, bRow.number, 3);
-                            bRow.getCell(1).font = { bold: true };
-                            bRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF5DC' } };
-                            bRow.getCell(1).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                         } else {
                             const rowData = [];
-                            // 橫排分 3 欄載入資料
                             ['1號車', '2號車', '3號車'].forEach(cartLabel => {
                                 const booking = cellBookings.find(b => b.cart === cartLabel);
                                 if (booking) {
@@ -871,14 +859,12 @@
                                     let taStr = booking.ta ? ` (${booking.ta})` : "";
                                     rowData.push(`${cartLabel} : ${booking.className} ${booking.subject}(${booking.teacher})${taStr}`);
                                 } else {
-                                    // 沒有借出仍會顯示 3 欄
                                     rowData.push(`${cartLabel} : `);
                                 }
                             });
                             const dataRow = ws.addRow(rowData);
                             dataRow.eachCell(cell => {
                                 cell.alignment = { vertical: 'top', wrapText: true };
-                                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                             });
                         }
                         ws.addRow([]); // 每一節後加入空行
@@ -890,7 +876,7 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `平板電腦總表-校務處-第${weekNum}週_${fileDateStr}.xlsx`;
+                a.download = `平板電腦總表-校務處-第${weekNum}週_${printDate}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);

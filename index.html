@@ -761,7 +761,99 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `平板電腦總表-${cartStr}-第${weekNum}週_${printDate}.xlsx`;
+                a.download = `平板電腦總表-課室-第${weekNum}週_${printDate}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            const handleExportOfficeExcel = async () => {
+                if (typeof ExcelJS === 'undefined') {
+                    showNotification('Excel 匯出庫尚未載入，請稍後再試', 'error');
+                    return;
+                }
+                const weekDates = getWeekDates(viewDate);
+                const printDate = getPrintDateString();
+                const weekNum = getISOWeek(new Date(weekDates[0].dateStr));
+                const weekMsg = generateCurrentWeekMsg(viewDate);
+
+                const wb = new ExcelJS.Workbook();
+                const ws = wb.addWorksheet('校務處總表', {
+                    pageSetup: {
+                        paperSize: 9, // A4
+                        orientation: 'portrait', 
+                        margins: {
+                            left: 0.6, right: 0.6,
+                            top: 0.6, bottom: 0.6,
+                            header: 0.3, footer: 0.3
+                        }
+                    }
+                });
+
+                // 設定第一欄的足夠寬度以容納整行文字
+                ws.getColumn(1).width = 80;
+
+                // 週次
+                const titleRow = ws.addRow([`週次: ${weekMsg}`]);
+                titleRow.font = { bold: true, size: 14 };
+                ws.addRow([]); // 空行
+
+                // 迴圈寫入每日及每節內容
+                weekDates.forEach(wd => {
+                    // 日期 (星期一)
+                    const dateRow = ws.addRow([`日期 (${wd.name})`]);
+                    dateRow.font = { bold: true, size: 12 };
+                    dateRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } }; 
+
+                    PERIODS.forEach(period => {
+                        if (period.isBreak) {
+                            // 小息 (9:45 - 10:05)
+                            const breakRow = ws.addRow([`${period.name} (${period.time})`]);
+                            breakRow.font = { bold: true };
+                            breakRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
+                            ws.addRow([]); // 休息後空行
+                            return;
+                        }
+
+                        // 第1節 (8:35 - 9:10)
+                        const periodRow = ws.addRow([`${period.name} (${period.time})`]);
+                        periodRow.font = { bold: true };
+                        periodRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
+
+                        const cellBookings = bookings.filter(b => 
+                            (b.isSystem && b.day === wd.name && b.period === period.id) ||
+                            (b.isRecurring && b.day === wd.name && b.period === period.id) ||
+                            (!b.isSystem && !b.isRecurring && b.date === wd.dateStr && b.period === period.id)
+                        );
+                        
+                        const isBlackout = cellBookings.some(b => b.isSystem);
+                        if (isBlackout) {
+                            const remark = cellBookings.find(b => b.isSystem).remark;
+                            ws.addRow([`暫停借用 : ${remark}`]);
+                        } else {
+                            ['1號車', '2號車', '3號車'].forEach(cartLabel => {
+                                const booking = cellBookings.find(b => b.cart === cartLabel);
+                                if (booking) {
+                                    // 格式：車號1 : 班別 (職工代號)
+                                    const isGrade2To6 = /^[2-6]/.test(booking.className);
+                                    let workerText = booking.workerCode || (isGrade2To6 ? "電腦室" : "未指派");
+                                    ws.addRow([`${cartLabel} : ${booking.className} (${workerText})`]);
+                                } else {
+                                    ws.addRow([`${cartLabel} : `]);
+                                }
+                            });
+                        }
+                        ws.addRow([]); // 每一節後加入空行
+                    });
+                });
+
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `平板電腦總表-校務處-第${weekNum}週_${printDate}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -1195,7 +1287,7 @@
 
                 let titleText = "每週平板電腦(iPad) 借用總表";
                 if (mode === 'duty') titleText = "安排職務總表(校務處)";
-                if (mode === 'office') titleText = "本週總表(校務處)";
+                if (mode === 'office') titleText = "每週總表(校務處)";
 
                 // 2. 簡化版的顯示資訊卡片
                 const renderSimplifiedScheduleCard = (booking) => {
@@ -1342,6 +1434,16 @@
                             {mode === 'normal' && (
                                 <>
                                 <button onClick={handleExportExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
+                                    匯出檔案
+                                </button>
+                                <button onClick={handlePrint} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
+                                    列印檔案
+                                </button>
+                                </>
+                            )}
+                            {mode === 'office' && (
+                                <>
+                                <button onClick={handleExportOfficeExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
                                     匯出檔案
                                 </button>
                                 <button onClick={handlePrint} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
@@ -1743,7 +1845,7 @@
                 </header>
 
                 <div className="max-w-5xl mx-auto mb-6 px-2 print-hide">
-                    <div className="flex flex-row bg-gray-200 rounded-lg p-1 gap-1 w-max max-w-full mx-auto overflow-x-auto scrollbar-hide snap-x">
+                    <div className="inline-flex flex-row bg-gray-200 rounded-lg p-1 gap-1 max-w-full overflow-x-auto scrollbar-hide snap-x">
                     {loginRole !== 'office' && (
                         <>
                         <button
@@ -1792,8 +1894,8 @@
                             }`}
                         >
                             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
-                            <span className="sm:hidden">總表(校務處)</span>
-                            <span className="hidden sm:inline">本週總表(校務處)</span>
+                            <span className="sm:hidden">校務處</span>
+                            <span className="hidden sm:inline">每週總表(校務處)</span>
                         </button>
                         </>
                     )}

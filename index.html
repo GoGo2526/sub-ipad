@@ -6,6 +6,11 @@
     <title>KTGPS 平板電腦借用系統</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 隱藏滾動條以優化手機滑動體驗 */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
     <!-- 引入 React 與 ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -19,7 +24,7 @@
         // --- 引入雲端資料庫 Firebase (透過 CDN) ---
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js';
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
-        import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+        import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
         const { useState, useEffect } = React;
 
@@ -91,6 +96,7 @@
         const CLASSES = ["1A", "1B", "1C", "1D", "1E", "2A", "2B", "2C", "2D", "2E", "3A", "3B", "3C", "3D", "3E", "4A", "4B", "4C", "4D", "4E", "5A", "5B", "5C", "5D", "5E", "6A", "6B", "6C", "6D", "6E"];
         const SUBJECTS = ["中文", "英文", "數學", "常識", "科學", "人文", "視藝", "音樂", "體育", "科技", "普話", "綜合課", "生教課"];
         const TAS = ["Angus", "Edmond", "Eunice", "Ken", "Kitty", "Lantis", "Matthew", "Shirley", "Stephanie", "Issac", "Ming"];
+        const WORKERS = ["觀", "塘", "官", "立", "小", "學", "秀", "明", "道"];
 
         // --- 日期輔助工具 ---
         const getLocalYYYYMMDD = (d) => {
@@ -162,6 +168,13 @@
             return getLocalYYYYMMDD(d);
         };
 
+        const isPastThursdayCutoff = () => {
+            const now = new Date();
+            const day = now.getDay() || 7; // 1 (星期一) - 7 (星期日)
+            const hour = now.getHours();
+            return (day > 4) || (day === 4 && hour >= 16);
+        };
+
         // --- 初始模擬數據 ---
         const INITIAL_BOOKINGS = [
             { id: 'sys1', day: '星期一', period: 9, className: '', subject: '', teacher: '', qty: 0, ta: '', cart: '不可借用', isSystem: true, remark: '導修' },
@@ -214,7 +227,9 @@
             const [user, setUser] = useState(null);
             const [dbBookings, setDbBookings] = useState([]);
 
-            const bookings = [...INITIAL_BOOKINGS, ...dbBookings];
+            // 確保本地與雲端資料不重複合併
+            const dbBookingIds = new Set(dbBookings.map(b => String(b.id)));
+            const bookings = [...INITIAL_BOOKINGS.filter(b => !dbBookingIds.has(String(b.id))), ...dbBookings];
 
             const [notification, setNotification] = useState({ show: false, message: '', type: '' });
             const [isAdmin, setIsAdmin] = useState(false);
@@ -222,20 +237,33 @@
             const [unlockTargetId, setUnlockTargetId] = useState(null);
             const [adminPassword, setAdminPassword] = useState('');
             const [editTargetBooking, setEditTargetBooking] = useState(null);
-            const [viewDate, setViewDate] = useState(getLocalYYYYMMDD(new Date()));
+            const [assignWorkerTarget, setAssignWorkerTarget] = useState(null); // 用於儲存要指派職工的課堂
+
+            // 根據星期四下午4時後自動顯示下星期的邏輯
+            const defaultDateStr = (() => {
+                if (isPastThursdayCutoff()) {
+                    return getDateStrFromMonday(7); // 下星期一
+                }
+                return getLocalYYYYMMDD(new Date());
+            })();
+            const defaultDateObj = new Date(defaultDateStr);
+            const defaultDayIdx = defaultDateObj.getDay();
+            const defaultFormDay = (defaultDayIdx === 0 || defaultDayIdx === 6) ? '週末(不可借用)' : DAYS[defaultDayIdx - 1];
+
+            const [viewDate, setViewDate] = useState(defaultDateStr);
             
             const [loginRole, setLoginRole] = useState(null); // 'user', 'admin', 'office'
             const [loginPassword, setLoginPassword] = useState('');
             
             // 7. 新增管理車號顯示的狀態
             const [visibleCarts, setVisibleCarts] = useState(['1號車', '2號車', '3號車']);
-
-            const currentDayIdx = new Date().getDay();
-            const initialFormDay = (currentDayIdx === 0 || currentDayIdx === 6) ? '週末(不可借用)' : DAYS[currentDayIdx - 1];
+            
+            // 用於儲存「安排職務」與「校務處總表」個別的本地獨立備註
+            const [customNotes, setCustomNotes] = useState({});
 
             const [formData, setFormData] = useState({
-                date: getLocalYYYYMMDD(new Date()),
-                day: initialFormDay,
+                date: defaultDateStr,
+                day: defaultFormDay,
                 periods: [1],
                 className: '',
                 subject: '',
@@ -397,6 +425,12 @@
 
                 if (!formData.className || !formData.subject || !formData.teacher) {
                     showNotification('請填寫所有必要欄位 (班別、科目、教師代號)！', 'error');
+                    return;
+                }
+
+                const nextMondayStr = getDateStrFromMonday(7);
+                if (isPastThursdayCutoff() && formData.date < nextMondayStr) {
+                    showNotification('星期四下午4時後已暫停本星期的預借服務，請預約下週或之後的日期。', 'error');
                     return;
                 }
 
@@ -579,7 +613,8 @@
             };
 
             const renderBookingCard = (booking, themeStyles, viewOnly = false) => {
-                const isSystemFixed = booking.isRecurring || (booking.cart === '3號車' && booking.subject?.includes('科技'));
+                const isGrade1Tech = /^[1][A-E]/.test(booking.className) && booking.subject?.includes('科技');
+                const isSystemFixed = (booking.isRecurring || (booking.cart === '3號車' && booking.subject?.includes('科技'))) && !isGrade1Tech;
                 const isLocked = isSystemFixed || (booking.isConfirmed && !isAdmin);
                 const isDraggable = !isSystemFixed && (!booking.isConfirmed || isAdmin) && !viewOnly;
 
@@ -694,16 +729,24 @@
                 } else if (formData.periods.length === 0) {
                     availabilityMsg = "請點選欲借用的課節。";
                 } else {
-                    const plan = planAssignments(formData.date, formData.day, formData.periods, formData.subject, formData.className);
-                    if (!plan.success) {
-                        availabilityMsg = `注意：${plan.message}`;
+                    const nextMondayStr = getDateStrFromMonday(7);
+                    const isBookingCurrentWeekAfterCutoff = isPastThursdayCutoff() && (formData.date < nextMondayStr);
+
+                    if (isBookingCurrentWeekAfterCutoff) {
+                        availabilityMsg = "系統提示：星期四下午4時後已暫停本星期的預借服務，請預約下週或之後的日期。";
                         isFull = true;
                     } else {
-                        const isGrade2To6Tech = /^[2-6]/.test(formData.className) && formData.subject.includes('科技');
-                        if (isGrade2To6Tech) {
-                            availabilityMsg = `目前選取的 ${formData.periods.length} 節課 3號車 尚可借用。`;
+                        const plan = planAssignments(formData.date, formData.day, formData.periods, formData.subject, formData.className);
+                        if (!plan.success) {
+                            availabilityMsg = `注意：${plan.message}`;
+                            isFull = true;
                         } else {
-                            availabilityMsg = `目前選取的 ${formData.periods.length} 節課尚有車輛可借用。系統將自動安排 (連堂將盡量安排同車)。`;
+                            const isGrade2To6Tech = /^[2-6]/.test(formData.className) && formData.subject.includes('科技');
+                            if (isGrade2To6Tech) {
+                                availabilityMsg = `目前選取的 ${formData.periods.length} 節課 3號車 尚可借用。`;
+                            } else {
+                                availabilityMsg = `目前選取的 ${formData.periods.length} 節課尚有車輛可借用。系統將自動安排 (連堂將盡量安排同車)。`;
+                            }
                         }
                     }
                 }
@@ -935,8 +978,12 @@
                 </div>
             );
 
-            const renderSchedule = () => {
+            const renderSchedule = (mode = 'normal') => {
                 const weekDates = getWeekDates(viewDate);
+
+                let titleText = "每週平板電腦(iPad) 借用總表";
+                if (mode === 'duty') titleText = "安排職務總表(校務處)";
+                if (mode === 'office') titleText = "本週總表(校務處)";
 
                 // 2. 簡化版的顯示資訊卡片
                 const renderSimplifiedScheduleCard = (booking) => {
@@ -944,6 +991,47 @@
                     if (booking.cart === '1號車') themeStyles = { bg: "bg-blue-50", border: "border-blue-300", text: "text-blue-900" };
                     if (booking.cart === '2號車') themeStyles = { bg: "bg-green-50", border: "border-green-300", text: "text-green-900" };
                     if (booking.cart === '3號車') themeStyles = { bg: "bg-purple-50", border: "border-purple-300", text: "text-purple-900" };
+
+                    // 針對「安排職務總表」與「校務處總表」的專屬佈局格式
+                    if (mode === 'duty' || mode === 'office') {
+                        const isGrade2To6 = /^[2-6]/.test(booking.className);
+                        return (
+                            <div key={booking.id} className={`p-2 rounded-lg border w-full flex shadow-sm min-h-[70px] mb-1 ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
+                                {/* 左半邊 */}
+                                <div className="flex flex-col justify-between flex-1 pr-1 overflow-hidden">
+                                    {/* 上方約2/3: 班別 (放大粗體) 及 編輯 */}
+                                    <div className="flex items-center space-x-1.5">
+                                        <div className="font-black text-3xl leading-none tracking-tight">
+                                            {booking.className}
+                                        </div>
+                                        {mode === 'duty' && !isGrade2To6 && (
+                                            <span onClick={(e) => { e.stopPropagation(); setAssignWorkerTarget(booking); }} className="cursor-pointer text-blue-700 bg-blue-100 hover:bg-blue-200 px-1.5 py-0.5 rounded-sm text-[11px] font-bold transition-colors z-10 whitespace-nowrap">
+                                                編輯
+                                            </span>
+                                        )}
+                                    </div>
+                                    {/* 下方約1/3: 車號 */}
+                                    <div className="flex items-center mt-auto pt-1">
+                                        <div className="text-[11px] font-bold flex items-center whitespace-nowrap">
+                                            <Truck size={12} className="mr-0.5" /> {booking.cart}
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* 右半邊: 職工代號 / 電腦室 */}
+                                <div className="w-[56px] flex-shrink-0 flex items-center justify-center border-l border-gray-300 border-opacity-40 pl-1 overflow-hidden">
+                                    {booking.workerCode ? (
+                                        <span className="font-black text-3xl text-center leading-none">
+                                            {booking.workerCode}
+                                        </span>
+                                    ) : (
+                                        <span className="font-bold text-[13px] text-center text-gray-500 whitespace-nowrap tracking-tighter">
+                                            {isGrade2To6 ? "電腦室" : "未指派"}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    }
 
                     let secondLine = '';
                     if (booking.cart === '3號車') {
@@ -964,7 +1052,9 @@
                         <div key={booking.id} className={`p-2 rounded-lg border w-full flex flex-col justify-center shadow-sm min-h-[65px] mb-1 ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
                             <div className="flex justify-between items-center text-sm font-bold mb-1">
                                 <span>{booking.className} {booking.subject}({booking.teacher})</span>
-                                <span className="ml-1 whitespace-nowrap">{booking.cart}</span>
+                                <span className="ml-1 whitespace-nowrap flex items-center">
+                                    <Truck size={14} className="mr-0.5" /> {booking.cart}
+                                </span>
                             </div>
                             <div className="text-sm font-medium opacity-90">
                                 {secondLine}
@@ -981,7 +1071,7 @@
                         <h2 className="text-xl font-bold text-gray-800 flex flex-col sm:flex-row items-start sm:items-center flex-shrink-0">
                             <div className="flex items-center">
                                 <Calendar className="mr-2 text-blue-600 flex-shrink-0" size={24} />
-                                <span>每週平板電腦(iPad) 借用總表</span>
+                                <span>{titleText}</span>
                             </div>
                             <span className="text-sm sm:text-xl font-bold text-gray-800 sm:ml-2 mt-1 sm:mt-0">
                                 ({generateCurrentWeekMsg(viewDate)})
@@ -1083,7 +1173,9 @@
                                                     </div>
                                                 );
                                             }
-                                            return renderSimplifiedScheduleCard(booking);
+                                            
+                                            const card = renderSimplifiedScheduleCard(booking);
+                                            return card;
                                         })}
                                     </div>
                                     </td>
@@ -1268,6 +1360,47 @@
                 );
             }
 
+            const renderAssignWorkerModal = () => {
+                if (!assignWorkerTarget) return null;
+                return (
+                <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center"><ClipboardList className="mr-2 text-blue-600" size={20} /> 安排職務 (指派職工)</h3>
+                    <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!user) { showNotification('尚未登入', 'error'); return; }
+                        try {
+                            // 使用 setDoc 及 merge，確保如果是內建課堂(固定班)也能成功寫入資料庫
+                            await setDoc(getDocRef(String(assignWorkerTarget.id)), { ...assignWorkerTarget, workerCode: assignWorkerTarget.workerCode || '' }, { merge: true });
+                            setAssignWorkerTarget(null);
+                            showNotification('職工指派已更新', 'success');
+                        } catch (error) {
+                            console.error("更新失敗:", error);
+                            showNotification(`更新失敗：${error.message}`, 'error');
+                        }
+                    }}>
+                        <div className="space-y-3 mb-5">
+                            <p className="text-sm text-gray-600 font-medium">班別/課堂：{assignWorkerTarget.className || assignWorkerTarget.remark} ({assignWorkerTarget.cart})</p>
+                            <label className="text-sm font-medium text-gray-700 block">選擇職工代號：</label>
+                            <select
+                                value={assignWorkerTarget.workerCode || ''}
+                                onChange={e => setAssignWorkerTarget({ ...assignWorkerTarget, workerCode: e.target.value })}
+                                className="w-full p-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="">-- 未指派 --</option>
+                                {WORKERS.map(w => <option key={w} value={w}>{w}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                        <button type="button" onClick={() => setAssignWorkerTarget(null)} className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">取消</button>
+                        <button type="submit" className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors">儲存</button>
+                        </div>
+                    </form>
+                    </div>
+                </div>
+                );
+            };
+
             if (!loginRole) {
                 return (
                     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -1309,6 +1442,7 @@
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8 relative">
                 {renderUnlockModal()}
                 {renderEditModal()}
+                {renderAssignWorkerModal()}
                 <header className="max-w-5xl mx-auto mb-6 text-center relative pt-4 sm:pt-0">
                     {/* 桌面版管理員登入按鈕保持原位 */}
                     <div className="absolute right-0 top-0 sm:right-2 sm:top-2 hidden sm:block">
@@ -1329,12 +1463,12 @@
                 </header>
 
                 <div className="max-w-5xl mx-auto mb-6 px-2 flex justify-center">
-                    <div className="flex flex-row bg-gray-200 rounded-lg p-1 gap-1 w-full sm:w-auto overflow-x-auto">
+                    <div className="flex flex-row bg-gray-200 rounded-lg p-1 gap-1 w-full sm:w-auto overflow-x-auto scrollbar-hide snap-x">
                     {loginRole !== 'office' && (
                         <>
                         <button
                             onClick={() => setActiveTab('form')}
-                            className={`flex flex-1 sm:flex-none justify-center items-center px-2 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap ${activeTab === 'form' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                            className={`flex flex-none justify-center items-center px-3 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap snap-center ${activeTab === 'form' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                             }`}
                         >
                             <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
@@ -1343,7 +1477,7 @@
                         </button>
                         <button
                             onClick={() => setActiveTab('records')}
-                            className={`flex flex-1 sm:flex-none justify-center items-center px-2 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap ${activeTab === 'records' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                            className={`flex flex-none justify-center items-center px-3 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap snap-center ${activeTab === 'records' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                             }`}
                         >
                             <List className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
@@ -1354,13 +1488,34 @@
                     )}
                     <button
                         onClick={() => setActiveTab('schedule')}
-                        className={`flex flex-1 sm:flex-none justify-center items-center px-2 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap ${activeTab === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                        className={`flex flex-none justify-center items-center px-3 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap snap-center ${activeTab === 'schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
                         }`}
                     >
                         <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
                         <span className="sm:hidden">總表</span>
                         <span className="hidden sm:inline">本週總表</span>
                     </button>
+                    {(loginRole === 'admin' || loginRole === 'office') && (
+                        <>
+                        <button
+                            onClick={() => setActiveTab('duty')}
+                            className={`flex flex-none justify-center items-center px-3 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap snap-center ${activeTab === 'duty' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                            }`}
+                        >
+                            <List className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
+                            <span>安排職務(校務處)</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('office_schedule')}
+                            className={`flex flex-none justify-center items-center px-3 py-3 sm:px-6 rounded-md font-bold text-sm sm:text-lg transition-all whitespace-nowrap snap-center ${activeTab === 'office_schedule' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-300'
+                            }`}
+                        >
+                            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
+                            <span className="sm:hidden">總表(校務)</span>
+                            <span className="hidden sm:inline">本週總表(校務處)</span>
+                        </button>
+                        </>
+                    )}
                     </div>
                 </div>
 
@@ -1375,7 +1530,9 @@
                 <div className="max-w-5xl mx-auto">
                     {activeTab === 'form' && renderForm()}
                     {activeTab === 'records' && renderRecords()}
-                    {activeTab === 'schedule' && renderSchedule()}
+                    {activeTab === 'schedule' && renderSchedule('normal')}
+                    {activeTab === 'duty' && renderSchedule('duty')}
+                    {activeTab === 'office_schedule' && renderSchedule('office')}
                 </div>
                 </div>
             );

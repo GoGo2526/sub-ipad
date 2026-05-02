@@ -777,6 +777,9 @@
                 const printDate = getPrintDateString();
                 const weekNum = getISOWeek(new Date(weekDates[0].dateStr));
                 const weekMsg = generateCurrentWeekMsg(viewDate);
+                
+                const d = new Date();
+                const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
 
                 const wb = new ExcelJS.Workbook();
                 const ws = wb.addWorksheet('校務處總表', {
@@ -791,18 +794,31 @@
                     }
                 });
 
-                // 設定第一欄的足夠寬度以容納整行文字
-                ws.getColumn(1).width = 80;
+                // 設定三欄的足夠寬度以容納各車號資料
+                ws.getColumn(1).width = 32;
+                ws.getColumn(2).width = 32;
+                ws.getColumn(3).width = 32;
 
-                // 週次
-                const titleRow = ws.addRow([`週次: ${weekMsg}`]);
-                titleRow.font = { bold: true, size: 14 };
+                // 1. 版頭：學校名稱與列印日期
+                const titleRow1 = ws.addRow(['觀塘官立小學(秀明道)', '', `(列印日期: ${printDateFormatted})`]);
+                ws.mergeCells(titleRow1.number, 1, titleRow1.number, 2);
+                titleRow1.getCell(1).font = { bold: true, size: 14 };
+                titleRow1.getCell(3).alignment = { horizontal: 'right' };
+                titleRow1.getCell(3).font = { bold: true, size: 12 };
+
+                // 2. 版頭：總表名稱與週次
+                const titleRow2 = ws.addRow([`每週平板電腦(iPad)借用總表 (${weekMsg})`]);
+                ws.mergeCells(titleRow2.number, 1, titleRow2.number, 3);
+                titleRow2.getCell(1).font = { bold: true, size: 16 };
+                titleRow2.getCell(1).alignment = { horizontal: 'center' };
+
                 ws.addRow([]); // 空行
 
                 // 迴圈寫入每日及每節內容
                 weekDates.forEach(wd => {
                     // 日期 (星期一)
-                    const dateRow = ws.addRow([`日期 (${wd.name})`]);
+                    const dateRow = ws.addRow([`${wd.dateStr} (${wd.name})`]);
+                    ws.mergeCells(dateRow.number, 1, dateRow.number, 3);
                     dateRow.font = { bold: true, size: 12 };
                     dateRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } }; 
 
@@ -810,6 +826,7 @@
                         if (period.isBreak) {
                             // 小息 (9:45 - 10:05)
                             const breakRow = ws.addRow([`${period.name} (${period.time})`]);
+                            ws.mergeCells(breakRow.number, 1, breakRow.number, 3);
                             breakRow.font = { bold: true };
                             breakRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
                             ws.addRow([]); // 休息後空行
@@ -818,6 +835,7 @@
 
                         // 第1節 (8:35 - 9:10)
                         const periodRow = ws.addRow([`${period.name} (${period.time})`]);
+                        ws.mergeCells(periodRow.number, 1, periodRow.number, 3);
                         periodRow.font = { bold: true };
                         periodRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
 
@@ -830,18 +848,23 @@
                         const isBlackout = cellBookings.some(b => b.isSystem);
                         if (isBlackout) {
                             const remark = cellBookings.find(b => b.isSystem).remark;
-                            ws.addRow([`暫停借用 : ${remark}`]);
+                            const bRow = ws.addRow([`暫停借用 : ${remark}`]);
+                            ws.mergeCells(bRow.number, 1, bRow.number, 3);
                         } else {
+                            const rowData = [];
                             ['1號車', '2號車', '3號車'].forEach(cartLabel => {
                                 const booking = cellBookings.find(b => b.cart === cartLabel);
                                 if (booking) {
-                                    // 格式：車號1 : 班別 (職工代號)
-                                    const isGrade2To6 = /^[2-6]/.test(booking.className);
-                                    let workerText = booking.workerCode || (isGrade2To6 ? "電腦室" : "未指派");
-                                    ws.addRow([`${cartLabel} : ${booking.className} (${workerText})`]);
+                                    // 格式：車號1 : 班別 科目(教師代號) (負責TA)
+                                    let taStr = booking.ta ? ` (${booking.ta})` : "";
+                                    rowData.push(`${cartLabel} : ${booking.className} ${booking.subject}(${booking.teacher})${taStr}`);
                                 } else {
-                                    ws.addRow([`${cartLabel} : `]);
+                                    rowData.push(`${cartLabel} : `);
                                 }
+                            });
+                            const dataRow = ws.addRow(rowData);
+                            dataRow.eachCell(cell => {
+                                cell.alignment = { vertical: 'top', wrapText: true };
                             });
                         }
                         ws.addRow([]); // 每一節後加入空行

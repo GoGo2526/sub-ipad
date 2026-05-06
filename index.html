@@ -283,6 +283,7 @@
             const [editTargetBooking, setEditTargetBooking] = useState(null);
             const [assignWorkerTarget, setAssignWorkerTarget] = useState(null); // 用於儲存要指派職工的課堂
             const [weekStatuses, setWeekStatuses] = useState({}); // 儲存各週是否已完成編排的狀態
+            const [unconfirmedAlert, setUnconfirmedAlert] = useState({ show: false, list: [], weekDates: [] }); // 新增：用於顯示未確認清單的彈出視窗狀態
 
             // 根據星期四下午4時後自動顯示下星期的邏輯
             const defaultDateStr = (() => {
@@ -683,22 +684,8 @@
                             return a.period - b.period;
                         });
 
-                        // 依照您的要求格式組合錯誤訊息清單 (使用 JSX 以支援換行顯示)
-                        const errorMsgJSX = (
-                            <div className="flex flex-col text-sm text-left">
-                                <div className="mb-1">以下車號,班別及借用課堂尚未確認,請盡快確認.</div>
-                                {unconfirmed.map((b, index) => {
-                                    const wd = weekDates.find(w => b.date === w.dateStr || (b.isRecurring && b.day === w.name));
-                                    return (
-                                        <div key={b.id}>
-                                            ({index + 1}) {wd.display} {b.cart} 第{b.period}節 {b.className} {b.subject}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        );
-                        
-                        showNotification(errorMsgJSX, 'error');
+                        // 觸發置中顯示的提示視窗
+                        setUnconfirmedAlert({ show: true, list: unconfirmed, weekDates });
                         return; // 中斷執行，不更新週狀態為已完成
                     }
                 }
@@ -1923,6 +1910,40 @@
                 );
             };
 
+            const renderUnconfirmedModal = () => {
+                if (!unconfirmedAlert.show) return null;
+                return (
+                <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+                        <h3 className="text-lg font-bold text-red-600 mb-3 flex items-center">
+                            <AlertCircle className="mr-2" size={24} /> 尚未確認提示
+                        </h3>
+                        <div className="mb-5 text-sm text-gray-800">
+                            <div className="mb-2 font-bold">以下車號,班別及借用課堂尚未確認,請盡快確認.</div>
+                            <div className="max-h-60 overflow-y-auto space-y-1 bg-gray-50 p-3 rounded border">
+                                {unconfirmedAlert.list.map((b, index) => {
+                                    const wd = unconfirmedAlert.weekDates.find(w => b.date === w.dateStr || (b.isRecurring && b.day === w.name));
+                                    return (
+                                        <div key={b.id}>
+                                            ({index + 1}) {wd?.display} {b.cart} 第{b.period}節 {b.className} {b.subject}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="flex justify-center">
+                            <button 
+                                onClick={() => setUnconfirmedAlert({ show: false, list: [], weekDates: [] })} 
+                                className="px-8 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-colors w-full"
+                            >
+                                確認
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                );
+            };
+
             if (!loginRole) {
                 return (
                     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -1962,6 +1983,7 @@
 
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8 relative print:bg-white print:p-0">
+                {renderUnconfirmedModal()}
                 {renderUnlockModal()}
                 {renderEditModal()}
                 {renderAssignWorkerModal()}

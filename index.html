@@ -243,21 +243,21 @@
             { id: 203, day: '星期二', period: 4, className: '6C', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
             { id: 204, day: '星期二', period: 5, className: '4E', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
             { id: 205, day: '星期二', period: 6, className: '2B', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
-            { id: 206, day: '星期二', period: 7, className: '1E', subject: '科技', teacher: '汪', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true },
+            { id: 206, day: '星期二', period: 7, className: '1E', subject: '科技', teacher: '汪', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true, isConfirmed: true },
 
             { id: 301, day: '星期三', period: 2, className: '2C', subject: '科技', teacher: '譚', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
             { id: 302, day: '星期三', period: 3, className: '4A', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
             { id: 303, day: '星期三', period: 4, className: '3A', subject: '科技', teacher: '榗', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
             { id: 304, day: '星期三', period: 5, className: '5C', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
             { id: 305, day: '星期三', period: 6, className: '6D', subject: '科技', teacher: '龍', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
-            { id: 306, day: '星期三', period: 7, className: '1B', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true },
+            { id: 306, day: '星期三', period: 7, className: '1B', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true, isConfirmed: true },
 
-            { id: 401, day: '星期四', period: 2, className: '1A', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true },
+            { id: 401, day: '星期四', period: 2, className: '1A', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true, isConfirmed: true },
             { id: 402, day: '星期四', period: 3, className: '2D', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
-            { id: 403, day: '星期四', period: 4, className: '1D', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true },
+            { id: 403, day: '星期四', period: 4, className: '1D', subject: '科技', teacher: '趙', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true, isConfirmed: true },
             { id: 404, day: '星期四', period: 6, className: '3C', subject: '科技', teacher: '達', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
             { id: 405, day: '星期四', period: 7, className: '5E', subject: '科技', teacher: '卓', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
-            { id: 406, day: '星期四', period: 8, className: '1C', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true },
+            { id: 406, day: '星期四', period: 8, className: '1C', subject: '科技', teacher: '何', qty: 35, ta: 'Stephanie', cart: '1號車', isRecurring: true, isConfirmed: true },
 
             { id: 501, day: '星期五', period: 2, className: '2A', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
             { id: 502, day: '星期五', period: 3, className: '2E', subject: '科技', teacher: '楚', qty: 35, ta: 'Stephanie', cart: '3號車', isRecurring: true },
@@ -583,7 +583,8 @@
                     return;
                 }
                 try {
-                    await updateDoc(getDocRef(id), { isConfirmed: true });
+                    const booking = bookings.find(b => String(b.id) === String(id));
+                    await setDoc(getDocRef(String(id)), { ...booking, isConfirmed: true }, { merge: true });
                     showNotification('已確認借用，該課堂現在不能再作改動。', 'success');
                 } catch (error) {
                     console.error("確認失敗:", error);
@@ -631,12 +632,13 @@
                 }
 
                 try {
-                    await updateDoc(getDocRef(bookingId), {
+                    await setDoc(getDocRef(String(bookingId)), {
+                        ...booking,
                         date: newDate,
                         day: newDay,
                         period: newPeriod,
                         cart: cartToCheck
-                    });
+                    }, { merge: true });
                     showNotification('成功調動借用課節位置！', 'success');
                 } catch (error) {
                     console.error("調動失敗:", error);
@@ -1015,7 +1017,7 @@
                                             e.stopPropagation();
                                             if (isAdmin) {
                                                 if (!user) { showNotification('尚未登入', 'error'); return; }
-                                                updateDoc(getDocRef(booking.id), { isConfirmed: false })
+                                                setDoc(getDocRef(String(booking.id)), { ...booking, isConfirmed: false }, { merge: true })
                                                 .then(() => showNotification('已解除確認，現在可作修改。', 'success'))
                                                 .catch((error) => showNotification(`解除確認失敗：${error.message}`, 'error'));
                                             } else {
@@ -1698,7 +1700,8 @@
                         if (stringToHex(adminPassword) === '536d722d32353236') {
                         try {
                             if (!user) { showNotification('尚未登入', 'error'); return; }
-                            await updateDoc(getDocRef(unlockTargetId), { isConfirmed: false });
+                            const booking = bookings.find(b => String(b.id) === String(unlockTargetId));
+                            await setDoc(getDocRef(String(unlockTargetId)), { ...booking, isConfirmed: false }, { merge: true });
                             setUnlockTargetId(null);
                             setAdminPassword('');
                             showNotification('已解除確認，現在可以修改、移動或刪除該課堂。', 'success');
@@ -1761,7 +1764,7 @@
 
                         const { id, ...updateData } = editTargetBooking;
                         try {
-                            await updateDoc(getDocRef(id), updateData);
+                            await setDoc(getDocRef(String(id)), { ...editTargetBooking }, { merge: true });
                             setEditTargetBooking(null);
                             showNotification('課堂資料已更新', 'success');
                         } catch (error) {

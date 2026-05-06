@@ -667,8 +667,12 @@
                         weekDates.some(wd => b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
                     );
 
-                    // 過濾出尚未確認的課堂
-                    const unconfirmed = currentWeekBookings.filter(b => !b.isConfirmed);
+                    // 過濾出尚未確認的課堂 (排除系統固定的課堂，因為它們不需要手動確認)
+                    const unconfirmed = currentWeekBookings.filter(b => {
+                        const isGrade1Tech = /^[1][A-E]/.test(b.className) && b.subject?.includes('科技');
+                        const isSystemFixed = (b.isRecurring || (b.cart === '3號車' && b.subject?.includes('科技'))) && !isGrade1Tech;
+                        return !isSystemFixed && !b.isConfirmed;
+                    });
 
                     if (unconfirmed.length > 0) {
                         // 依照日期、節數進行排序以便閱讀

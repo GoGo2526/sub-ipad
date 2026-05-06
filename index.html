@@ -656,6 +656,49 @@
 
             const handleWeekStatusToggle = async (mondayStr, currentValue) => {
                 if (!user) return;
+
+                // 新增：如果嘗試打勾 (設定為已完成)，先檢查當週是否有未確認的課堂
+                if (!currentValue) {
+                    const weekDates = getWeekDates(viewDate);
+                    
+                    // 找出此週所有的借用紀錄 (排除系統禁借事項)
+                    const currentWeekBookings = bookings.filter(b => 
+                        !b.isSystem &&
+                        weekDates.some(wd => b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
+                    );
+
+                    // 過濾出尚未確認的課堂
+                    const unconfirmed = currentWeekBookings.filter(b => !b.isConfirmed);
+
+                    if (unconfirmed.length > 0) {
+                        // 依照日期、節數進行排序以便閱讀
+                        unconfirmed.sort((a, b) => {
+                            const wdA = weekDates.findIndex(wd => a.date === wd.dateStr || (a.isRecurring && a.day === wd.name));
+                            const wdB = weekDates.findIndex(wd => b.date === wd.dateStr || (b.isRecurring && b.day === wd.name));
+                            if (wdA !== wdB) return wdA - wdB;
+                            return a.period - b.period;
+                        });
+
+                        // 依照您的要求格式組合錯誤訊息清單 (使用 JSX 以支援換行顯示)
+                        const errorMsgJSX = (
+                            <div className="flex flex-col text-sm text-left">
+                                <div className="mb-1">以下車號,班別及借用課堂尚未確認,請盡快確認.</div>
+                                {unconfirmed.map((b, index) => {
+                                    const wd = weekDates.find(w => b.date === w.dateStr || (b.isRecurring && b.day === w.name));
+                                    return (
+                                        <div key={b.id}>
+                                            ({index + 1}) {wd.display} {b.cart} 第{b.period}節 {b.className} {b.subject}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                        
+                        showNotification(errorMsgJSX, 'error');
+                        return; // 中斷執行，不更新週狀態為已完成
+                    }
+                }
+
                 try {
                     // 修正：寫入至 bookings 集合內，避免權限問題
                     const ref = getDocRef(`week_status_${mondayStr}`);

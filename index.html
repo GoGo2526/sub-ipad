@@ -349,25 +349,23 @@
                 if (!user) return;
                 const unsubscribeBookings = onSnapshot(getCollRef(), (snapshot) => {
                     const cloudData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setDbBookings(cloudData);
+                    
+                    // 修正：將週狀態存儲在 bookings 集合中，避免 Firebase 權限阻擋新集合
+                    const normalBookings = cloudData.filter(doc => !String(doc.id).startsWith('week_status_'));
+                    const statuses = {};
+                    cloudData.filter(doc => String(doc.id).startsWith('week_status_')).forEach(doc => {
+                        const mondayStr = String(doc.id).replace('week_status_', '');
+                        statuses[mondayStr] = doc.isArranged;
+                    });
+                    
+                    setDbBookings(normalBookings);
+                    setWeekStatuses(statuses);
                 }, (error) => {
                     console.error("讀取資料失敗:", error);
                 });
 
-                const getWeekStatusCollRef = () => isLocalDeploy ? collection(db, 'week_status') : collection(db, 'artifacts', appId, 'public', 'data', 'week_status');
-                const unsubscribeWeekStatus = onSnapshot(getWeekStatusCollRef(), (snapshot) => {
-                    const statuses = {};
-                    snapshot.forEach(doc => {
-                        statuses[doc.id] = doc.data().isArranged;
-                    });
-                    setWeekStatuses(statuses);
-                }, (error) => {
-                    console.error("讀取週狀態失敗:", error);
-                });
-
                 return () => {
                     unsubscribeBookings();
-                    unsubscribeWeekStatus();
                 };
             }, [user]);
 
@@ -657,7 +655,8 @@
             const handleWeekStatusToggle = async (mondayStr, currentValue) => {
                 if (!user) return;
                 try {
-                    const ref = isLocalDeploy ? doc(db, 'week_status', mondayStr) : doc(db, 'artifacts', appId, 'public', 'data', 'week_status', mondayStr);
+                    // 修正：寫入至 bookings 集合內，避免權限問題
+                    const ref = getDocRef(`week_status_${mondayStr}`);
                     await setDoc(ref, { isArranged: !currentValue }, { merge: true });
                 } catch (err) {
                     console.error("更新週狀態失敗:", err);

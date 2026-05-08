@@ -707,78 +707,59 @@
                 }
                 const weekDates = getWeekDates(viewDate);
                 const printDate = getPrintDateString();
-                
-                const sortedCarts = [...visibleCarts].sort();
-                let cartStr = sortedCarts.join('-');
-                if (sortedCarts.length === 3 && sortedCarts.includes('1號車') && sortedCarts.includes('3號車')) {
-                    cartStr = '1-3號車';
-                }
-                
                 const weekNum = getISOWeek(new Date(weekDates[0].dateStr));
                 const weekMsg = generateCurrentWeekMsg(viewDate);
 
                 const wb = new ExcelJS.Workbook();
-                const ws = wb.addWorksheet('總表', {
+                const ws = wb.addWorksheet('借用清單', {
                     pageSetup: {
                         paperSize: 9, // A4
-                        orientation: 'landscape', // 預設橫向列印
-                        fitToPage: true, // 自動縮放寬度
-                        fitToWidth: 1, // 將所有欄擠進一頁寬度
-                        fitToHeight: 0, // 高度允許跨頁
-                        margins: {
-                            left: 0.6, right: 0.6,
-                            top: 0.6, bottom: 0.6,
-                            header: 0.3, footer: 0.3
-                        }
+                        orientation: 'landscape',
+                        margins: { left: 0.6, right: 0.6, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 }
                     }
                 });
 
-                // 1. 版頭：學校名稱與列印日期
-                ws.mergeCells(1, 1, 1, weekDates.length + 1);
-                const titleRow1 = ws.getRow(1);
-                titleRow1.getCell(1).value = `觀塘官立小學(秀明道)                                            列印日期: ${printDate}`;
-                titleRow1.getCell(1).font = { bold: true, size: 14 };
-                
-                // 2. 版頭：總表名稱與週次
-                ws.mergeCells(2, 1, 2, weekDates.length + 1);
-                const titleRow2 = ws.getRow(2);
-                titleRow2.getCell(1).value = `每週平板電腦(iPad)借用總表 (${weekMsg})`;
-                titleRow2.getCell(1).font = { bold: true, size: 16 };
-                titleRow2.getCell(1).alignment = { horizontal: 'center' };
+                // 1. 版頭：標題與列印日期
+                ws.mergeCells('A1:J1');
+                const titleRow1 = ws.getCell('A1');
+                titleRow1.value = `觀塘官立小學(秀明道) - 平板電腦借用清單 (${weekMsg})`;
+                titleRow1.font = { bold: true, size: 16 };
+                titleRow1.alignment = { horizontal: 'center' };
+
+                ws.mergeCells('A2:J2');
+                const titleRow2 = ws.getCell('A2');
+                titleRow2.value = `列印日期: ${printDate}`;
+                titleRow2.alignment = { horizontal: 'right' };
 
                 ws.addRow([]); // 留空第3行
 
-                // 3. 表格標題行 (Row 4)
-                const headerRowData = ['節數/時間', ...weekDates.map(wd => `${wd.display} (${wd.name})`)];
-                const headerRow = ws.addRow(headerRowData);
+                // 2. 表格標題行 (Row 4)
+                const headers = ['日期', '星期', '節數', '時間', '車號', '班別', '科目', '教師代號', '數量', '備註/負責TA'];
+                const headerRow = ws.addRow(headers);
                 headerRow.eachCell((cell) => {
                     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } };
                     cell.font = { bold: true };
-                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                 });
 
                 // 設定欄寬
                 ws.getColumn(1).width = 15;
-                for(let i = 0; i < weekDates.length; i++) {
-                    ws.getColumn(i + 2).width = 28;
-                }
+                ws.getColumn(2).width = 12;
+                ws.getColumn(3).width = 12;
+                ws.getColumn(4).width = 18;
+                ws.getColumn(5).width = 12;
+                ws.getColumn(6).width = 12;
+                ws.getColumn(7).width = 15;
+                ws.getColumn(8).width = 12;
+                ws.getColumn(9).width = 10;
+                ws.getColumn(10).width = 25;
 
-                // 4. 表格資料
-                PERIODS.forEach(period => {
-                    if (period.isBreak) {
-                        const row = ws.addRow([`${period.name} (${period.time})`]);
-                        ws.mergeCells(row.number, 1, row.number, weekDates.length + 1);
-                        row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
-                        row.getCell(1).font = { bold: true };
-                        row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-                        row.getCell(1).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                        return;
-                    }
+                // 3. 處理清單資料 (只列出有用/已借出的資料)
+                weekDates.forEach(wd => {
+                    PERIODS.forEach(period => {
+                        if (period.isBreak) return; // 忽略小息等休息時間，不放入清單
 
-                    const rowData = [`${period.name}\n${period.time}`];
-                    
-                    weekDates.forEach(wd => {
                         const cellBookings = bookings.filter(b => 
                             (b.isSystem && b.day === wd.name && b.period === period.id) ||
                             (b.isRecurring && b.day === wd.name && b.period === period.id) ||
@@ -786,55 +767,51 @@
                         );
                         
                         const isBlackout = cellBookings.some(b => b.isSystem);
+                        
                         if (isBlackout) {
                             const remark = cellBookings.find(b => b.isSystem).remark;
-                            rowData.push({ text: remark, isBlackout: true });
+                            const row = ws.addRow([wd.dateStr, wd.name, period.name, period.time, '暫停借用', '-', '-', '-', '-', remark]);
+                            row.eachCell(cell => {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF5DC' } };
+                                cell.font = { color: { argb: 'FFFF0000' } }; // 紅字標示暫停時段
+                                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                            });
                         } else {
-                            let cellTextParts = [];
+                            // 遍歷所有車號，只輸出有被借用的項目
                             ['1號車', '2號車', '3號車'].filter(c => visibleCarts.includes(c)).forEach(cartLabel => {
                                 const booking = cellBookings.find(b => b.cart === cartLabel);
                                 if (booking) {
-                                    let workerStr = booking.workerCode ? ` [職工:${booking.workerCode}]` : "";
-                                    let taStr = "";
-                                    if (booking.ta === '科任老師') {
-                                        taStr = ` (科任老師:${booking.teacher})`;
-                                    } else if (booking.ta) {
-                                        taStr = ` (TA:${booking.ta})`;
-                                    }
-                                    cellTextParts.push(`${cartLabel}: ${booking.className} ${booking.subject} (${booking.teacher})${workerStr}${taStr}`);
+                                    let taStr = booking.ta === '科任老師' ? `科任老師: ${booking.teacher}` : (booking.ta || '');
+                                    const row = ws.addRow([
+                                        wd.dateStr, 
+                                        wd.name, 
+                                        period.name, 
+                                        period.time, 
+                                        cartLabel, 
+                                        booking.className, 
+                                        booking.subject, 
+                                        booking.teacher, 
+                                        booking.qty || '-', 
+                                        taStr
+                                    ]);
+                                    row.eachCell(cell => {
+                                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                                        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                                    });
                                 }
                             });
-                            rowData.push({ text: cellTextParts.join('\n\n'), isBlackout: false });
                         }
                     });
-
-                    const newRow = ws.addRow(rowData.map(r => typeof r === 'string' ? r : r.text));
-                    
-                    newRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
-                    newRow.getCell(1).font = { bold: true };
-                    newRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                    newRow.getCell(1).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-
-                    for (let i = 0; i < weekDates.length; i++) {
-                        const cell = newRow.getCell(i + 2);
-                        const info = rowData[i + 1];
-                        cell.alignment = { vertical: 'top', wrapText: true };
-                        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                        if (info.isBlackout) {
-                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF5DC' } };
-                            cell.font = { bold: true };
-                            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                        }
-                    }
                 });
 
-                // 產生 Blob 檔案並下載，這樣副檔名不會再報錯
+                // 產生 Blob 檔案並下載
                 const buffer = await wb.xlsx.writeBuffer();
                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `平板電腦總表-課室-第${weekNum}週_${printDate}.xlsx`;
+                a.download = `平板電腦借用清單-第${weekNum}週_${printDate}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);

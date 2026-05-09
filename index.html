@@ -1137,106 +1137,100 @@
                     return;
                 }
                 const weekDates = getWeekDates(viewDate);
-                const printDate = getPrintDateString();
-                const weekNum = getISOWeek(new Date(weekDates[0].dateStr));
-                const weekMsg = generateCurrentWeekMsg(viewDate);
-                
                 const d = new Date();
                 const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
+                const weekNum = getISOWeek(new Date(weekDates[0].dateStr));
+                const weekMsg = generateCurrentWeekMsg(viewDate);
+
+                const formatDateDMY = (dateStr) => {
+                    const parts = dateStr.split('-');
+                    return `${parseInt(parts[2])}-${parseInt(parts[1])}-${parts[0]}`;
+                };
 
                 const wb = new ExcelJS.Workbook();
-                const ws = wb.addWorksheet('校務處總表', {
+                const ws = wb.addWorksheet('職工推車安排', {
                     pageSetup: {
                         paperSize: 9, // A4
                         orientation: 'portrait', 
-                        margins: {
-                            left: 0.6, right: 0.6,
-                            top: 0.6, bottom: 0.6,
-                            header: 0.3, footer: 0.3
-                        }
+                        margins: { left: 0.6, right: 0.6, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 }
                     }
                 });
 
-                // 設定三欄的足夠寬度以容納各車號資料
-                ws.getColumn(1).width = 32;
-                ws.getColumn(2).width = 32;
-                ws.getColumn(3).width = 32;
+                // 設定欄寬 (5欄)
+                ws.getColumn(1).width = 15; // 節數
+                ws.getColumn(2).width = 20; // 時間
+                ws.getColumn(3).width = 15; // 車號
+                ws.getColumn(4).width = 15; // 班別
+                ws.getColumn(5).width = 25; // 負責職工
 
-                // 1. 版頭：學校名稱與列印日期
-                const titleRow1 = ws.addRow(['觀塘官立小學(秀明道)', '', `(列印日期: ${printDateFormatted})`]);
-                ws.mergeCells(titleRow1.number, 1, titleRow1.number, 2);
-                titleRow1.getCell(1).font = { bold: true, size: 14 };
-                titleRow1.getCell(3).alignment = { horizontal: 'right' };
-                titleRow1.getCell(3).font = { bold: true, size: 12 };
+                // 1. 版頭：標題
+                const titleRow1 = ws.addRow(['觀塘官立小學(秀明道)']);
+                ws.mergeCells('A1:E1');
+                titleRow1.getCell(1).font = { bold: true, size: 16, color: { argb: 'FF003366' }, underline: true };
+                titleRow1.getCell(1).alignment = { horizontal: 'left' };
 
-                // 2. 版頭：總表名稱與週次
-                const titleRow2 = ws.addRow([`每週平板電腦(iPad)借用總表 (${weekMsg})`]);
-                ws.mergeCells(titleRow2.number, 1, titleRow2.number, 3);
-                titleRow2.getCell(1).font = { bold: true, size: 16 };
-                titleRow2.getCell(1).alignment = { horizontal: 'center' };
+                const titleRow2 = ws.addRow([`平板電腦職工推車安排 (${weekMsg})`]);
+                ws.mergeCells('A2:E2');
+                titleRow2.getCell(1).font = { size: 12 };
+                titleRow2.getCell(1).alignment = { horizontal: 'left' };
 
-                ws.addRow([]); // 空行
-
-                // 迴圈寫入每日及每節內容
+                // 3. 處理清單資料
+                let isFirstDay = true;
                 weekDates.forEach(wd => {
-                    // 日期 (星期一)
-                    const dateRow = ws.addRow([`${wd.dateStr} (${wd.name})`]);
-                    ws.mergeCells(dateRow.number, 1, dateRow.number, 3);
-                    dateRow.font = { bold: true, size: 12 };
-                    dateRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } }; 
+                    const dayBookings = bookings.filter(b => 
+                        !b.isSystem && 
+                        ['1號車', '2號車'].includes(b.cart) &&
+                        visibleCarts.includes(b.cart) && 
+                        (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
+                    );
+
+                    if (dayBookings.length === 0) return;
+
+                    const dateRow = ws.addRow([
+                        `日期：${formatDateDMY(wd.dateStr)} (${wd.name})`, '', '', '', 
+                        isFirstDay ? `列印日期: ${printDateFormatted}` : ''
+                    ]);
+                    ws.mergeCells(`A${dateRow.number}:D${dateRow.number}`);
+                    dateRow.getCell(1).font = { size: 14 };
+                    dateRow.getCell(1).alignment = { horizontal: 'left' };
+                    dateRow.getCell(5).alignment = { horizontal: 'right' };
+                    
+                    isFirstDay = false;
+
+                    const headers = ['節數', '時間', '車號', '班別', '負責職工'];
+                    const headerRow = ws.addRow(headers);
+                    headerRow.eachCell((cell) => {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } };
+                        cell.font = { bold: true };
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                    });
 
                     PERIODS.forEach(period => {
-                        if (period.isBreak) {
-                            // 小息 (9:45 - 10:05)
-                            const breakRow = ws.addRow([`${period.name} (${period.time})`]);
-                            ws.mergeCells(breakRow.number, 1, breakRow.number, 3);
-                            breakRow.font = { bold: true };
-                            breakRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
-                            ws.addRow([]); // 休息後空行
-                            return;
-                        }
+                        if (period.isBreak) return;
 
-                        // 第1節 (8:35 - 9:10)
-                        const periodRow = ws.addRow([`${period.name} (${period.time})`]);
-                        ws.mergeCells(periodRow.number, 1, periodRow.number, 3);
-                        periodRow.font = { bold: true };
-                        periodRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6E6E6' } };
+                        const periodBookings = dayBookings.filter(b => b.period === period.id);
+                        if (periodBookings.length === 0) return;
 
-                        const cellBookings = bookings.filter(b => 
-                            (b.isSystem && b.day === wd.name && b.period === period.id) ||
-                            (b.isRecurring && b.day === wd.name && b.period === period.id) ||
-                            (!b.isSystem && !b.isRecurring && b.date === wd.dateStr && b.period === period.id)
-                        );
-                        
-                        const isBlackout = cellBookings.some(b => b.isSystem);
-                        if (isBlackout) {
-                            const remark = cellBookings.find(b => b.isSystem).remark;
-                            const bRow = ws.addRow([`暫停借用 : ${remark}`]);
-                            ws.mergeCells(bRow.number, 1, bRow.number, 3);
-                        } else {
-                            const rowData = [];
-                            ['1號車', '2號車', '3號車'].forEach(cartLabel => {
-                                const booking = cellBookings.find(b => b.cart === cartLabel);
-                                if (booking) {
-                                    // 格式：車號1 : 班別 科目(教師代號) (負責TA)
-                                    let taStr = "";
-                                    if (booking.ta === '科任老師') {
-                                        taStr = ` (科任老師:${booking.teacher})`;
-                                    } else if (booking.ta) {
-                                        taStr = ` (${booking.ta})`;
-                                    }
-                                    rowData.push(`${cartLabel} : ${booking.className} ${booking.subject}(${booking.teacher})${taStr}`);
-                                } else {
-                                    rowData.push(`${cartLabel} : `);
-                                }
+                        periodBookings.sort((a, b) => a.cart.localeCompare(b.cart));
+
+                        periodBookings.forEach(booking => {
+                            const rowColor = booking.cart === '2號車' ? 'FFE2EFDA' : 'FFFFFFFF';
+                            const row = ws.addRow([
+                                period.name, 
+                                period.time, 
+                                booking.cart, 
+                                booking.className, 
+                                booking.workerCode || ''
+                            ]);
+                            row.eachCell(cell => {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowColor } };
+                                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                             });
-                            const dataRow = ws.addRow(rowData);
-                            dataRow.eachCell(cell => {
-                                cell.alignment = { vertical: 'top', wrapText: true };
-                            });
-                        }
-                        ws.addRow([]); // 每一節後加入空行
+                        });
                     });
+                    ws.addRow([]);
                 });
 
                 const buffer = await wb.xlsx.writeBuffer();
@@ -1244,15 +1238,132 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `平板電腦總表-校務處-第${weekNum}週_${printDate}.xlsx`;
+                a.download = `平板電腦職工推車安排-第${weekNum}週_${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             };
 
-            const handlePrint = () => {
-                window.print();
+            const handlePrintOfficeFormat = () => {
+                const weekDates = getWeekDates(viewDate);
+                const d = new Date();
+                const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
+                const weekMsg = generateCurrentWeekMsg(viewDate);
+
+                const formatDateDMY = (dateStr) => {
+                    const parts = dateStr.split('-');
+                    return `${parseInt(parts[2])}-${parseInt(parts[1])}-${parts[0]}`;
+                };
+
+                let htmlContent = `
+                    <!DOCTYPE html>
+                    <html lang="zh-HK">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>平板電腦職工推車安排列印</title>
+                        <style>
+                            /* 設定 A4 直印版面與 Margin 0 以隱藏瀏覽器預設頁首頁尾 */
+                            @page { size: A4 portrait; margin: 0; }
+                            body { 
+                                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+                                padding: 12mm; /* 利用 Padding 避免內容裁切 */
+                                -webkit-print-color-adjust: exact !important; 
+                                print-color-adjust: exact !important;
+                                margin: 0;
+                            }
+                            .main-title { color: #003366; font-size: 20px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
+                            .sub-title { font-size: 16px; margin-bottom: 20px; }
+                            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: avoid; }
+                            th, td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
+                            th { background-color: #CCE5FF; font-weight: bold; }
+                            .cart-2 { background-color: #E2EFDA !important; } /* 2號車專屬綠底 */
+                            .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; }
+                            .date-text { font-size: 18px; font-weight: bold; }
+                            .print-date { font-size: 12px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="main-title">觀塘官立小學(秀明道)</div>
+                        <div class="sub-title">平板電腦職工推車安排 (${weekMsg})</div>
+                `;
+
+                let isFirstDay = true;
+                weekDates.forEach(wd => {
+                    const dayBookings = bookings.filter(b => 
+                        !b.isSystem && 
+                        ['1號車', '2號車'].includes(b.cart) &&
+                        visibleCarts.includes(b.cart) && 
+                        (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
+                    );
+
+                    if (dayBookings.length === 0) return;
+
+                    htmlContent += `
+                        <div class="date-header">
+                            <div class="date-text">日期：${formatDateDMY(wd.dateStr)} (${wd.name})</div>
+                            <div class="print-date">${isFirstDay ? `列印日期: ${printDateFormatted}` : ''}</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%;">節數</th>
+                                    <th style="width: 25%;">時間</th>
+                                    <th style="width: 15%;">車號</th>
+                                    <th style="width: 20%;">班別</th>
+                                    <th style="width: 25%;">負責職工</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    isFirstDay = false;
+
+                    PERIODS.forEach(period => {
+                        if (period.isBreak) return;
+                        const periodBookings = dayBookings.filter(b => b.period === period.id);
+                        if (periodBookings.length === 0) return;
+
+                        periodBookings.sort((a, b) => a.cart.localeCompare(b.cart));
+
+                        periodBookings.forEach(booking => {
+                            const rowClass = booking.cart === '2號車' ? 'cart-2' : '';
+                            htmlContent += `
+                                <tr class="${rowClass}">
+                                    <td>${period.name}</td>
+                                    <td>${period.time}</td>
+                                    <td>${booking.cart}</td>
+                                    <td>${booking.className}</td>
+                                    <td>${booking.workerCode || ''}</td>
+                                </tr>
+                            `;
+                        });
+                    });
+
+                    htmlContent += `
+                            </tbody>
+                        </table>
+                    `;
+                });
+
+                htmlContent += `
+                    </body>
+                    </html>
+                `;
+
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                    printWindow.document.open();
+                    printWindow.document.write(htmlContent);
+                    printWindow.document.close();
+                    
+                    printWindow.onload = function() {
+                        printWindow.setTimeout(function() {
+                            printWindow.print();
+                        }, 300);
+                    };
+                } else {
+                    showNotification('無法開啟列印視窗，請確認瀏覽器是否允許彈出視窗 (Pop-ups)。', 'error');
+                }
             };
 
             const handleLogin = (e) => {
@@ -1876,7 +1987,7 @@
                                 <button onClick={handleExportOfficeExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
                                     匯出檔案
                                 </button>
-                                <button onClick={handlePrint} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
+                                <button onClick={handlePrintOfficeFormat} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
                                     列印檔案
                                 </button>
                                 </>

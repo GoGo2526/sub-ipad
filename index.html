@@ -1025,20 +1025,25 @@
                             @page { size: A4 portrait; margin: 0; }
                             body { 
                                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-                                padding: 12mm; /* 利用 Padding 避免內容裁切 */
+                                padding: 15mm; /* 加大 Padding 預留列印邊界 */
                                 -webkit-print-color-adjust: exact !important; 
                                 print-color-adjust: exact !important;
                                 margin: 0;
                             }
                             .main-title { color: #003366; font-size: 20px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
                             .sub-title { font-size: 16px; margin-bottom: 20px; }
-                            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: avoid; }
+                            
+                            /* 表格換頁控制 */
+                            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; }
+                            tr { page-break-inside: avoid; break-inside: avoid; }
+                            thead { display: table-header-group; } /* 確保表頭在換頁時自動重複 */
+                            
                             th, td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
-                            th { background-color: #CCE5FF; font-weight: bold; }
+                            .header-row th { background-color: #CCE5FF; font-weight: bold; }
                             .cart-2 { background-color: #E2EFDA !important; } /* 2號車專屬綠底 */
-                            .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; }
-                            .date-text { font-size: 18px; font-weight: bold; }
-                            .print-date { font-size: 12px; }
+                            .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; width: 100%; }
+                            .date-text { font-size: 18px; font-weight: bold; color: black; text-align: left; }
+                            .print-date { font-size: 12px; color: black; font-weight: normal; }
                         </style>
                     </head>
                     <body>
@@ -1057,14 +1062,19 @@
 
                     if (dayBookings.length === 0) return;
 
+                    // 將日期標題放入 thead 內，當表格跨頁時，整個 thead (包含日期) 都會在下一頁頂部重複印出
                     htmlContent += `
-                        <div class="date-header">
-                            <div class="date-text">日期：${formatDateDMY(wd.dateStr)} (${wd.name})</div>
-                            <div class="print-date">${isFirstDay ? `列印日期: ${printDateFormatted}` : ''}</div>
-                        </div>
                         <table>
                             <thead>
                                 <tr>
+                                    <th colspan="7" style="border: none; background: transparent; padding: 0 0 5px 0;">
+                                        <div class="date-header">
+                                            <div class="date-text">日期：${formatDateDMY(wd.dateStr)} (${wd.name})</div>
+                                            <div class="print-date">${isFirstDay ? `列印日期: ${printDateFormatted}` : ''}</div>
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr class="header-row">
                                     <th style="width: 10%;">節數</th>
                                     <th style="width: 15%;">時間</th>
                                     <th style="width: 15%;">車號</th>
@@ -1267,20 +1277,25 @@
                             @page { size: A4 portrait; margin: 0; }
                             body { 
                                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-                                padding: 12mm; /* 利用 Padding 避免內容裁切 */
+                                padding: 15mm; /* 加大 Padding 預留列印邊界 */
                                 -webkit-print-color-adjust: exact !important; 
                                 print-color-adjust: exact !important;
                                 margin: 0;
                             }
                             .main-title { color: #003366; font-size: 20px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
                             .sub-title { font-size: 16px; margin-bottom: 20px; }
-                            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: avoid; }
+                            
+                            /* 表格換頁控制 */
+                            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; }
+                            tr { page-break-inside: avoid; break-inside: avoid; }
+                            thead { display: table-header-group; } /* 確保表頭在換頁時自動重複 */
+                            
                             th, td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
-                            th { background-color: #CCE5FF; font-weight: bold; }
+                            .header-row th { background-color: #CCE5FF; font-weight: bold; }
                             .cart-2 { background-color: #E2EFDA !important; } /* 2號車專屬綠底 */
-                            .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; }
-                            .date-text { font-size: 18px; font-weight: bold; }
-                            .print-date { font-size: 12px; }
+                            .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; width: 100%; }
+                            .date-text { font-size: 18px; font-weight: bold; color: black; text-align: left; }
+                            .print-date { font-size: 12px; color: black; font-weight: normal; }
                         </style>
                     </head>
                     <body>
@@ -1299,14 +1314,19 @@
 
                     if (dayBookings.length === 0) return;
 
+                    // 將日期標題放入 thead 內，當表格跨頁時，整個 thead (包含日期) 都會在下一頁頂部重複印出
                     htmlContent += `
-                        <div class="date-header">
-                            <div class="date-text">日期：${formatDateDMY(wd.dateStr)} (${wd.name})</div>
-                            <div class="print-date">${isFirstDay ? `列印日期: ${printDateFormatted}` : ''}</div>
-                        </div>
                         <table>
                             <thead>
                                 <tr>
+                                    <th colspan="5" style="border: none; background: transparent; padding: 0 0 5px 0;">
+                                        <div class="date-header">
+                                            <div class="date-text">日期：${formatDateDMY(wd.dateStr)} (${wd.name})</div>
+                                            <div class="print-date">${isFirstDay ? `列印日期: ${printDateFormatted}` : ''}</div>
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr class="header-row">
                                     <th style="width: 15%;">節數</th>
                                     <th style="width: 25%;">時間</th>
                                     <th style="width: 15%;">車號</th>

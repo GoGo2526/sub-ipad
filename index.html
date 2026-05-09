@@ -1234,7 +1234,31 @@
                             } else if (plan.rearrangements && plan.rearrangements.length > 0) {
                                 availabilityMsg = `系統偵測可自動調節車號，將安排同車連堂給您 (需確認)。`;
                             } else {
-                                availabilityMsg = `目前選取的 ${formData.periods.length} 節課尚有車輛可借用。系統將自動安排 (連堂將盡量安排同車)。`;
+                                let cart1Free = true;
+                                let cart2Free = true;
+                                for (let pid of formData.periods) {
+                                    const currentBookings = bookings.filter(b =>
+                                        !b.isSystem &&
+                                        b.period === pid &&
+                                        (b.date === formData.date || (b.isRecurring && b.day === formData.day))
+                                    );
+                                    const usedCarts = currentBookings.map(b => b.cart);
+                                    if (usedCarts.includes('1號車')) cart1Free = false;
+                                    if (usedCarts.includes('2號車')) cart2Free = false;
+                                }
+
+                                let idleMsg = "";
+                                if (cart1Free && cart2Free) {
+                                    idleMsg = "1號及2號車皆閒置可借用";
+                                } else if (cart1Free) {
+                                    idleMsg = "1號車閒置可借用，2號車已借出";
+                                } else if (cart2Free) {
+                                    idleMsg = "2號車閒置可借用，1號車已借出";
+                                } else {
+                                    idleMsg = "將由系統混合安排1號及2號車";
+                                }
+
+                                availabilityMsg = `目前選取的 ${formData.periods.length} 節課尚有車輛可借用 (${idleMsg})。系統將自動安排 (連堂將盡量安排同車)。`;
                             }
                         }
                     }

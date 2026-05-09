@@ -284,6 +284,7 @@
             const [assignWorkerTarget, setAssignWorkerTarget] = useState(null); // 用於儲存要指派職工的課堂
             const [weekStatuses, setWeekStatuses] = useState({}); // 儲存各週是否已完成編排的狀態
             const [unconfirmedAlert, setUnconfirmedAlert] = useState({ show: false, list: [], weekDates: [] }); // 新增：用於顯示未確認清單的彈出視窗狀態
+            const [rearrangeConfirm, setRearrangeConfirm] = useState(null); // 新增：用於連堂自動調節確認
 
             // 根據星期四下午4時後自動顯示下星期的邏輯
             const defaultDateStr = (() => {
@@ -438,36 +439,152 @@
                     return { success: true, assignments };
                 }
 
-                // 處理普通課堂的連堂邏輯
-                const pairs = [[1, 2], [3, 4], [5, 6], [7, 8]];
-                let remainingPeriods = [...periods];
+                // 處理普通課堂的連堂邏輯 (動態偵測連續節數)
+                const sortedPeriods = [...periods].sort((a, b) => a - b);
+                const blocks = [];
+                let currentBlock = [];
 
-                for (let pair of pairs) {
-                    if (periods.includes(pair[0]) && periods.includes(pair[1])) {
-                        const avail0 = getAvailableCarts(pair[0]);
-                        const avail1 = getAvailableCarts(pair[1]);
-                        const common = avail0.filter(c => avail1.includes(c));
-
-                        if (common.length === 0) {
-                            return { success: false, message: `無法為連堂 (第${pair[0]},${pair[1]}節) 安排同一部車輛，請嘗試其他時段或分開單獨預約。` };
+                for (let i = 0; i < sortedPeriods.length; i++) {
+                    if (currentBlock.length === 0) {
+                        currentBlock.push(sortedPeriods[i]);
+                    } else {
+                        // 判斷是否連續 (相差 1 視為連續)
+                        if (sortedPeriods[i] === sortedPeriods[i - 1] + 1) {
+                            currentBlock.push(sortedPeriods[i]);
+                        } else {
+                            blocks.push(currentBlock);
+                            currentBlock = [sortedPeriods[i]];
                         }
-                        // 優先安排共同可用的車號
-                        assignments[pair[0]] = common[0];
-                        assignments[pair[1]] = common[0];
-                        remainingPeriods = remainingPeriods.filter(p => p !== pair[0] && p !== pair[1]);
+                    }
+                }
+                if (currentBlock.length > 0) {
+                    blocks.push(currentBlock);
+                }
+
+                let totalRearrangements = [];
+
+                for (let block of blocks) {
+                    if (block.length > 1) { // 連堂處理
+                        let commonAvail = getAvailableCarts(block[0]);
+                        for (let i = 1; i < block.length; i++) {
+                            const availNext = getAvailableCarts(block[i]);
+                            commonAvail = commonAvail.filter(c => availNext.includes(c));
+                        }
+
+                        if (commonAvail.length > 0) {
+                            // 正常情況下有共同空車，直接使用
+                            for (let pid of block) {
+                                assignments[pid] = commonAvail[0];
+                            }
+                        } else {
+                            // 自動調節邏輯：嘗試交換以湊出連堂車號
+                            let rearranged = false;
+                            const possibleCarts = ['1號車', '2號車'];
+
+                            for (let targetCart of possibleCarts) {
+                                let canRearrange = true;
+                                let tempRearrangements = [];
+
+                                for (let pid of block) {
+                                    const avail = getAvailableCarts(pid);
+                                    if (avail.includes(targetCart)) {
+                                        continue; // 該節目標車號有空
+                                    }
+
+                                    if (avail.length === 0) {
+                                        canRearrange = false; // 該節已無任何空車
+                                        break;
+                                    }
+
+                                    // 尋找佔用目標車號的現有借用
+                                    const conflictBooking = bookings.find(b =>
+                                        !b.isSystem &&
+                                        b.period === pid &&
+                                        b.cart === targetCart &&
+                                        (b.date === date || (b.isRecurring && b.day === day))
+                                    );
+
+                                    // 確保不是系統保護課節
+                                    if (conflictBooking && !conflictBooking.isSystem) {
+                                        tempRearrangements.push({
+                                            booking: conflictBooking,
+                                            newCart: avail[0] // 將它換到剩下的另一部空車
+                                        });
+                                    } else {
+                                        canRearrange = false;
+                                        break;
+                                    }
+                                }
+
+                                if (canRearrange) {
+                                    rearranged = true;
+                                    for (let pid of block) {
+                                        assignments[pid] = targetCart;
+                                    }
+                                    totalRearrangements.push(...tempRearrangements);
+                                    break;
+                                }
+                            }
+
+                            if (!rearranged) {
+                                return { success: false, message: `無法為連堂 (第${block.join(',')}節) 安排同一部車輛，且無法自動調節，請嘗試其他時段或分開單獨預約。` };
+                            }
+                        }
+                    } else { // 單節課處理
+                        const pid = block[0];
+                        const avail = getAvailableCarts(pid);
+                        if (avail.length === 0) {
+                            return { success: false, message: `第${pid}節的 1號及2號車 均已被借出。` };
+                        }
+                        assignments[pid] = avail[0];
                     }
                 }
 
-                // 處理剩下的單節課
-                for (let pid of remainingPeriods) {
-                    const avail = getAvailableCarts(pid);
-                    if (avail.length === 0) {
-                        return { success: false, message: `第${pid}節的 1號及2號車 均已被借出。` };
-                    }
-                    assignments[pid] = avail[0];
-                }
+                return { success: true, assignments, rearrangements: totalRearrangements };
+            };
 
-                return { success: true, assignments };
+            const executeBooking = async (data, plan) => {
+                try {
+                    // 如果有重排，先寫入重排的項目
+                    if (plan.rearrangements && plan.rearrangements.length > 0) {
+                        for (let r of plan.rearrangements) {
+                            await setDoc(getDocRef(String(r.booking.id)), {
+                                ...r.booking,
+                                cart: r.newCart
+                            }, { merge: true });
+                        }
+                    }
+
+                    let newBookings = [];
+                    for (let pid of data.periods) {
+                        newBookings.push({
+                            date: data.date,
+                            day: data.day,
+                            className: data.className,
+                            subject: data.subject,
+                            teacher: data.teacher,
+                            qty: data.qty,
+                            ta: data.ta,
+                            period: pid,
+                            cart: plan.assignments[pid],
+                            isConfirmed: false
+                        });
+                    }
+
+                    for (let b of newBookings) {
+                        await addDoc(getCollRef(), b);
+                    }
+                    showNotification(`成功借用！已為您安排 ${data.periods.length} 節課堂。`);
+                    setFormData(prev => ({ ...prev, className: '', subject: '', teacher: '', ta: '', periods: [1] }));
+                    setRearrangeConfirm(null); // 清除確認狀態
+                } catch (error) {
+                    console.error("寫入資料庫失敗:", error);
+                    if (error.code === 'permission-denied') {
+                        showNotification('權限不足：請檢查 Firebase Firestore 規則是否允許寫入！', 'error');
+                    } else {
+                        showNotification(`寫入失敗：${error.message}`, 'error');
+                    }
+                }
             };
 
             const handleSubmit = async (e) => {
@@ -532,36 +649,12 @@
                     return;
                 }
 
-                let newBookings = [];
-                for (let pid of formData.periods) {
-                    newBookings.push({
-                        date: formData.date,
-                        day: formData.day,
-                        className: formData.className,
-                        subject: formData.subject,
-                        teacher: formData.teacher,
-                        qty: formData.qty,
-                        ta: formData.ta,
-                        period: pid,
-                        cart: plan.assignments[pid],
-                        isConfirmed: false
-                    });
+                if (plan.rearrangements && plan.rearrangements.length > 0) {
+                    setRearrangeConfirm({ formData, plan });
+                    return; // 暫停提交，彈出確認視窗等待老師確認
                 }
 
-                try {
-                    for (let b of newBookings) {
-                        await addDoc(getCollRef(), b);
-                    }
-                    showNotification(`成功借用！已為您安排 ${formData.periods.length} 節課堂。`);
-                    setFormData(prev => ({ ...prev, className: '', subject: '', teacher: '', ta: '', periods: [1] }));
-                } catch (error) {
-                    console.error("寫入資料庫失敗:", error);
-                    if (error.code === 'permission-denied') {
-                        showNotification('權限不足：請檢查 Firebase Firestore 規則是否允許寫入！', 'error');
-                    } else {
-                        showNotification(`寫入失敗：${error.message}`, 'error');
-                    }
-                }
+                await executeBooking(formData, plan);
             };
 
             const deleteBooking = async (id) => {
@@ -1138,6 +1231,8 @@
                             const isGrade2To6Tech = /^[2-6]/.test(formData.className) && formData.subject.includes('科技');
                             if (isGrade2To6Tech) {
                                 availabilityMsg = `目前選取的 ${formData.periods.length} 節課 3號車 尚可借用。`;
+                            } else if (plan.rearrangements && plan.rearrangements.length > 0) {
+                                availabilityMsg = `系統偵測可自動調節車號，將安排同車連堂給您 (需確認)。`;
                             } else {
                                 availabilityMsg = `目前選取的 ${formData.periods.length} 節課尚有車輛可借用。系統將自動安排 (連堂將盡量安排同車)。`;
                             }
@@ -1935,6 +2030,47 @@
                 );
             };
 
+            const renderRearrangeModal = () => {
+                if (!rearrangeConfirm) return null;
+                return (
+                <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+                        <h3 className="text-lg font-bold text-blue-800 mb-3 flex items-center">
+                            <Info className="mr-2" size={24} /> 系統自動調節提示
+                        </h3>
+                        <div className="mb-5 text-sm text-gray-800 space-y-2">
+                            <p>您選擇的連堂課節，目前無法直接分配同一部車輛。</p>
+                            <p className="font-bold text-green-700">但系統可自動調節其他已借出的車號，為您騰出同車連堂的空間！</p>
+                            <div className="bg-gray-50 p-3 rounded border text-xs mt-2">
+                                <span className="font-bold text-gray-700">調節詳情：</span>
+                                <ul className="list-disc pl-4 mt-1 space-y-1">
+                                    {rearrangeConfirm.plan.rearrangements.map((r, i) => (
+                                        <li key={i}>
+                                            第{r.booking.period}節的 <span className="font-bold">{r.booking.className}班</span> ({r.booking.cart}) 將會被調至 <span className="font-bold text-blue-600">{r.newCart}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                            <button 
+                                onClick={() => setRearrangeConfirm(null)} 
+                                className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                            >
+                                取消
+                            </button>
+                            <button 
+                                onClick={() => executeBooking(rearrangeConfirm.formData, rearrangeConfirm.plan)} 
+                                className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-colors"
+                            >
+                                同意調節並借用
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                );
+            };
+
             if (!loginRole) {
                 return (
                     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -1974,6 +2110,7 @@
 
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8 relative print:bg-white print:p-0">
+                {renderRearrangeModal()}
                 {renderUnconfirmedModal()}
                 {renderUnlockModal()}
                 {renderEditModal()}

@@ -444,12 +444,18 @@
                 const blocks = [];
                 let currentBlock = [];
 
+                // 根據真實非小息節數來判斷相鄰
+                const allPeriods = PERIODS.filter(p => !p.isBreak).map(p => p.id);
+
                 for (let i = 0; i < sortedPeriods.length; i++) {
                     if (currentBlock.length === 0) {
                         currentBlock.push(sortedPeriods[i]);
                     } else {
-                        // 判斷是否連續 (相差 1 視為連續)
-                        if (sortedPeriods[i] === sortedPeriods[i - 1] + 1) {
+                        const lastPeriod = currentBlock[currentBlock.length - 1];
+                        const lastIdx = allPeriods.indexOf(lastPeriod);
+                        const currentIdx = allPeriods.indexOf(sortedPeriods[i]);
+                        // 判斷是否連續 (在非小息的陣列中 index 相差 1)
+                        if (currentIdx === lastIdx + 1) {
                             currentBlock.push(sortedPeriods[i]);
                         } else {
                             blocks.push(currentBlock);
@@ -463,8 +469,82 @@
 
                 let totalRearrangements = [];
 
+                // 尋找同班在同一天已有的借用紀錄
+                const existingClassBookings = bookings.filter(b => 
+                    !b.isSystem && 
+                    b.className === className && 
+                    (b.date === date || (b.isRecurring && b.day === day))
+                );
+
                 for (let block of blocks) {
-                    if (block.length > 1) { // 連堂處理
+                    // 尋找該 block 的相鄰節數
+                    const firstPeriod = block[0];
+                    const lastPeriod = block[block.length - 1];
+                    const idxFirst = allPeriods.indexOf(firstPeriod);
+                    const idxLast = allPeriods.indexOf(lastPeriod);
+                    
+                    let forcedTargetCart = null;
+                    
+                    const adjacentPeriodsToCheck = [];
+                    if (idxFirst > 0) adjacentPeriodsToCheck.push(allPeriods[idxFirst - 1]);
+                    if (idxLast !== -1 && idxLast < allPeriods.length - 1) adjacentPeriodsToCheck.push(allPeriods[idxLast + 1]);
+
+                    for (let adjPid of adjacentPeriodsToCheck) {
+                        const adjBooking = existingClassBookings.find(b => b.period === adjPid);
+                        // 只跟隨 1號 或 2號車
+                        if (adjBooking && ['1號車', '2號車'].includes(adjBooking.cart)) {
+                            forcedTargetCart = adjBooking.cart;
+                            break;
+                        }
+                    }
+
+                    // 如果找到相鄰的同班紀錄，強制使用該車號
+                    if (forcedTargetCart) {
+                        let canArrangeForced = true;
+                        let tempRearrangements = [];
+                        
+                        for (let pid of block) {
+                            const avail = getAvailableCarts(pid);
+                            if (avail.includes(forcedTargetCart)) {
+                                continue; 
+                            }
+                            
+                            if (avail.length === 0) {
+                                canArrangeForced = false; 
+                                break;
+                            }
+                            
+                            const conflictBooking = bookings.find(b =>
+                                !b.isSystem &&
+                                b.period === pid &&
+                                b.cart === forcedTargetCart &&
+                                (b.date === date || (b.isRecurring && b.day === day))
+                            );
+
+                            if (conflictBooking && !conflictBooking.isSystem) {
+                                tempRearrangements.push({
+                                    booking: conflictBooking,
+                                    newCart: avail[0] // 換到剩下的空車
+                                });
+                            } else {
+                                canArrangeForced = false;
+                                break;
+                            }
+                        }
+                        
+                        if (canArrangeForced) {
+                            for (let pid of block) {
+                                assignments[pid] = forcedTargetCart;
+                            }
+                            totalRearrangements.push(...tempRearrangements);
+                            continue; // 成功處理這個 block
+                        } else {
+                            return { success: false, message: `系統偵測到同班相鄰課堂有借用(${forcedTargetCart})，但無法為您排入該車號（可能因車位已滿或有固定課堂），請嘗試其他時段或分開借用。` };
+                        }
+                    }
+
+                    // --- 以下為沒有相鄰同班課堂時的一般邏輯 ---
+                    if (block.length > 1) { // 一般自身連堂處理
                         let commonAvail = getAvailableCarts(block[0]);
                         for (let i = 1; i < block.length; i++) {
                             const availNext = getAvailableCarts(block[i]);
@@ -472,12 +552,10 @@
                         }
 
                         if (commonAvail.length > 0) {
-                            // 正常情況下有共同空車，直接使用
                             for (let pid of block) {
                                 assignments[pid] = commonAvail[0];
                             }
                         } else {
-                            // 自動調節邏輯：嘗試交換以湊出連堂車號
                             let rearranged = false;
                             const possibleCarts = ['1號車', '2號車'];
 
@@ -488,15 +566,14 @@
                                 for (let pid of block) {
                                     const avail = getAvailableCarts(pid);
                                     if (avail.includes(targetCart)) {
-                                        continue; // 該節目標車號有空
+                                        continue;
                                     }
 
                                     if (avail.length === 0) {
-                                        canRearrange = false; // 該節已無任何空車
+                                        canRearrange = false;
                                         break;
                                     }
 
-                                    // 尋找佔用目標車號的現有借用
                                     const conflictBooking = bookings.find(b =>
                                         !b.isSystem &&
                                         b.period === pid &&
@@ -504,11 +581,10 @@
                                         (b.date === date || (b.isRecurring && b.day === day))
                                     );
 
-                                    // 確保不是系統保護課節
                                     if (conflictBooking && !conflictBooking.isSystem) {
                                         tempRearrangements.push({
                                             booking: conflictBooking,
-                                            newCart: avail[0] // 將它換到剩下的另一部空車
+                                            newCart: avail[0]
                                         });
                                     } else {
                                         canRearrange = false;
@@ -827,7 +903,7 @@
                 ws.getColumn(4).width = 12; // 班別
                 ws.getColumn(5).width = 15; // 科目
                 ws.getColumn(6).width = 15; // 教師代號
-                ws.getColumn(7).width = 25; // 備註/負責TA
+                ws.getColumn(7).width = 25; // 負責老師 / TA
 
                 // 1. 版頭：標題 (Row 1 & 2)
                 const titleRow1 = ws.addRow(['觀塘官立小學(秀明道)']);
@@ -866,8 +942,8 @@
                     
                     isFirstDay = false;
 
-                    // 表格標題行
-                    const headers = ['節數', '時間', '車號', '班別', '科目', '教師代號', '備註/負責TA'];
+                    // 表格標題行 (更改為負責老師 / TA)
+                    const headers = ['節數', '時間', '車號', '班別', '科目', '教師代號', '負責老師 / TA'];
                     const headerRow = ws.addRow(headers);
                     headerRow.eachCell((cell) => {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCE5FF' } };
@@ -886,12 +962,12 @@
                         // 依車號排序 (1號車優先)
                         periodBookings.sort((a, b) => a.cart.localeCompare(b.cart));
 
-                        // 第2,4,6,8節綠色底色
-                        const isGreenRow = [2, 4, 6, 8].includes(period.id);
-                        const rowColor = isGreenRow ? 'FFE2EFDA' : 'FFFFFFFF';
-
                         periodBookings.forEach(booking => {
                             let taStr = booking.ta === '科任老師' ? `科任老師: ${booking.teacher}` : (booking.ta || '');
+                            
+                            // 更新：只有 2號車改為綠色底色，其餘維持白色
+                            const rowColor = booking.cart === '2號車' ? 'FFE2EFDA' : 'FFFFFFFF';
+
                             const row = ws.addRow([
                                 period.name, 
                                 period.time, 
@@ -918,11 +994,141 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `平板電腦借用清單-第${weekNum}週_${printDateFormatted}.xlsx`;
+                // 更新：匯出檔案名稱格式
+                a.download = `平板電腦借用清單-第${weekNum}週_${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+            };
+
+            const handlePrintListFormat = () => {
+                const weekDates = getWeekDates(viewDate);
+                const d = new Date();
+                const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
+                const weekMsg = generateCurrentWeekMsg(viewDate);
+
+                const formatDateDMY = (dateStr) => {
+                    const parts = dateStr.split('-');
+                    return `${parseInt(parts[2])}-${parseInt(parts[1])}-${parts[0]}`;
+                };
+
+                // 建立純 HTML 字串 (已徹底移除 script 標籤，避免 Babel 解析錯誤)
+                let htmlContent = `
+                    <!DOCTYPE html>
+                    <html lang="zh-HK">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>平板電腦借用清單列印</title>
+                        <style>
+                            /* 設定 A4 直印版面與 Margin 0 以隱藏瀏覽器預設頁首頁尾 */
+                            @page { size: A4 portrait; margin: 0; }
+                            body { 
+                                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+                                padding: 12mm; /* 利用 Padding 避免內容裁切 */
+                                -webkit-print-color-adjust: exact !important; 
+                                print-color-adjust: exact !important;
+                                margin: 0;
+                            }
+                            .main-title { color: #003366; font-size: 20px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
+                            .sub-title { font-size: 16px; margin-bottom: 20px; }
+                            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: avoid; }
+                            th, td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
+                            th { background-color: #CCE5FF; font-weight: bold; }
+                            .cart-2 { background-color: #E2EFDA !important; } /* 2號車專屬綠底 */
+                            .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; }
+                            .date-text { font-size: 18px; font-weight: bold; }
+                            .print-date { font-size: 12px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="main-title">觀塘官立小學(秀明道)</div>
+                        <div class="sub-title">平板電腦借用清單 (${weekMsg})</div>
+                `;
+
+                let isFirstDay = true;
+                weekDates.forEach(wd => {
+                    const dayBookings = bookings.filter(b => 
+                        !b.isSystem && 
+                        ['1號車', '2號車'].includes(b.cart) &&
+                        visibleCarts.includes(b.cart) && 
+                        (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
+                    );
+
+                    if (dayBookings.length === 0) return;
+
+                    htmlContent += `
+                        <div class="date-header">
+                            <div class="date-text">日期：${formatDateDMY(wd.dateStr)} (${wd.name})</div>
+                            <div class="print-date">${isFirstDay ? `列印日期: ${printDateFormatted}` : ''}</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%;">節數</th>
+                                    <th style="width: 15%;">時間</th>
+                                    <th style="width: 15%;">車號</th>
+                                    <th style="width: 15%;">班別</th>
+                                    <th style="width: 15%;">科目</th>
+                                    <th style="width: 15%;">教師代號</th>
+                                    <th style="width: 15%;">負責老師 / TA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    isFirstDay = false;
+
+                    PERIODS.forEach(period => {
+                        if (period.isBreak) return;
+                        const periodBookings = dayBookings.filter(b => b.period === period.id);
+                        if (periodBookings.length === 0) return;
+
+                        periodBookings.sort((a, b) => a.cart.localeCompare(b.cart));
+
+                        periodBookings.forEach(booking => {
+                            const taStr = booking.ta === '科任老師' ? `科任老師: ${booking.teacher}` : (booking.ta || '');
+                            const rowClass = booking.cart === '2號車' ? 'cart-2' : '';
+                            htmlContent += `
+                                <tr class="${rowClass}">
+                                    <td>${period.name}</td>
+                                    <td>${period.time}</td>
+                                    <td>${booking.cart}</td>
+                                    <td>${booking.className}</td>
+                                    <td>${booking.subject}</td>
+                                    <td>${booking.teacher}</td>
+                                    <td>${taStr}</td>
+                                </tr>
+                            `;
+                        });
+                    });
+
+                    htmlContent += `
+                            </tbody>
+                        </table>
+                    `;
+                });
+
+                htmlContent += `
+                    </body>
+                    </html>
+                `;
+
+                // 建立彈出視窗並以原生的視窗 onload 事件處理列印，解決 Babel 編譯失敗問題
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                    printWindow.document.open();
+                    printWindow.document.write(htmlContent);
+                    printWindow.document.close();
+                    
+                    // 當彈出視窗的內容載入完成後自動觸發列印
+                    printWindow.onload = function() {
+                        printWindow.setTimeout(function() {
+                            printWindow.print();
+                        }, 300);
+                    };
+                } else {
+                    showNotification('無法開啟列印視窗，請確認瀏覽器是否允許彈出視窗 (Pop-ups)。', 'error');
+                }
             };
 
             const handleExportOfficeExcel = async () => {
@@ -1251,14 +1457,14 @@
                                 if (cart1Free && cart2Free) {
                                     idleMsg = "1號及2號車皆閒置可借用";
                                 } else if (cart1Free) {
-                                    idleMsg = "1號車閒置可借用，2號車已借出";
+                                    idleMsg = "1號車閒置可借用,2號車已借出";
                                 } else if (cart2Free) {
-                                    idleMsg = "2號車閒置可借用，1號車已借出";
+                                    idleMsg = "2號車閒置可借用,1號車已借出";
                                 } else {
                                     idleMsg = "將由系統混合安排1號及2號車";
                                 }
 
-                                availabilityMsg = `目前選取的 ${formData.periods.length} 節課尚有車輛可借用 (${idleMsg})。系統將自動安排 (連堂將盡量安排同車)。`;
+                                availabilityMsg = `目前選取的${formData.periods.length}節課,${idleMsg}. (若有連堂安排,系統會盡量安排同車)`;
                             }
                         }
                     }
@@ -1660,7 +1866,7 @@
                                 <button onClick={handleExportExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
                                     匯出檔案
                                 </button>
-                                <button onClick={handlePrint} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
+                                <button onClick={handlePrintListFormat} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
                                     列印檔案
                                 </button>
                                 </>
@@ -2063,8 +2269,8 @@
                             <Info className="mr-2" size={24} /> 系統自動調節提示
                         </h3>
                         <div className="mb-5 text-sm text-gray-800 space-y-2">
-                            <p>您選擇的連堂課節，目前無法直接分配同一部車輛。</p>
-                            <p className="font-bold text-green-700">但系統可自動調節其他已借出的車號，為您騰出同車連堂的空間！</p>
+                            <p>為配合連堂或同班連續借用，目前無法直接分配同一部車輛。</p>
+                            <p className="font-bold text-green-700">但系統可自動調節其他已借出的車號，為您騰出同班同車連堂的空間！</p>
                             <div className="bg-gray-50 p-3 rounded border text-xs mt-2">
                                 <span className="font-bold text-gray-700">調節詳情：</span>
                                 <ul className="list-disc pl-4 mt-1 space-y-1">

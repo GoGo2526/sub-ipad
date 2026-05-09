@@ -1183,16 +1183,26 @@
                 ws.getColumn(4).width = 15; // 班別
                 ws.getColumn(5).width = 25; // 負責職工
 
-                // 1. 版頭：標題
+                // 1. 版頭：標題與右上角車號框
                 const titleRow1 = ws.addRow(['觀塘官立小學(秀明道)']);
-                ws.mergeCells('A1:E1');
+                const titleRow2 = ws.addRow([`平板電腦職工推車安排 (${weekMsg})`]);
+                
+                ws.mergeCells('A1:C1');
                 titleRow1.getCell(1).font = { bold: true, size: 16, color: { argb: 'FF003366' }, underline: true };
                 titleRow1.getCell(1).alignment = { horizontal: 'left' };
 
-                const titleRow2 = ws.addRow([`平板電腦職工推車安排 (${weekMsg})`]);
-                ws.mergeCells('A2:E2');
+                ws.mergeCells('A2:C2');
                 titleRow2.getCell(1).font = { size: 12 };
                 titleRow2.getCell(1).alignment = { horizontal: 'left' };
+
+                // 加入右上角車號標示框
+                const cartText = visibleCarts.length > 0 ? visibleCarts.join('、') : '無指定車號';
+                ws.mergeCells('D1:E2');
+                const cartCell = ws.getCell('D1');
+                cartCell.value = cartText;
+                cartCell.font = { bold: true, size: 16, color: { argb: 'FF003366' } };
+                cartCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                cartCell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
 
                 // 3. 處理清單資料
                 let isFirstDay = true;

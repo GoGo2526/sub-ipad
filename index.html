@@ -1013,7 +1013,6 @@
                     return `${parseInt(parts[2])}-${parseInt(parts[1])}-${parts[0]}`;
                 };
 
-                // 建立純 HTML 字串 (已徹底移除 script 標籤，避免 Babel 解析錯誤)
                 let htmlContent = `
                     <!DOCTYPE html>
                     <html lang="zh-HK">
@@ -1025,7 +1024,7 @@
                             @page { size: A4 portrait; margin: 0; }
                             body { 
                                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-                                padding: 15mm; /* 加大 Padding 預留列印邊界 */
+                                padding: 0 15mm; /* 只設定左右邊界 15mm */
                                 -webkit-print-color-adjust: exact !important; 
                                 print-color-adjust: exact !important;
                                 margin: 0;
@@ -1033,22 +1032,32 @@
                             .main-title { color: #003366; font-size: 20px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
                             .sub-title { font-size: 16px; margin-bottom: 20px; }
                             
-                            /* 表格換頁控制 */
-                            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; }
-                            tr { page-break-inside: avoid; break-inside: avoid; }
-                            thead { display: table-header-group; } /* 確保表頭在換頁時自動重複 */
+                            /* 外層控制上下邊界 (15mm) 的 Table，利用 thead/tfoot 在每一頁重複的特性來模擬邊距 */
+                            .page-spacing-table { width: 100%; border: none; border-collapse: collapse; }
+                            .page-spacing-table > thead > tr > td, 
+                            .page-spacing-table > tfoot > tr > td { height: 15mm; border: none; padding: 0; background: transparent; }
+                            .page-spacing-table > tbody > tr > td { border: none; padding: 0; background: transparent; }
+
+                            /* 內部內容表格與換頁控制 */
+                            .content-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; }
+                            .content-table tr { page-break-inside: avoid; break-inside: avoid; }
+                            .content-table thead { display: table-header-group; } /* 確保表頭在換頁時自動重複 */
                             
-                            th, td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
-                            .header-row th { background-color: #CCE5FF; font-weight: bold; }
+                            .content-table th, .content-table td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
+                            .content-table .header-row th { background-color: #CCE5FF; font-weight: bold; border: 1px solid black; }
                             .cart-2 { background-color: #E2EFDA !important; } /* 2號車專屬綠底 */
+                            
                             .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; width: 100%; }
                             .date-text { font-size: 18px; font-weight: bold; color: black; text-align: left; }
                             .print-date { font-size: 12px; color: black; font-weight: normal; }
                         </style>
                     </head>
                     <body>
-                        <div class="main-title">觀塘官立小學(秀明道)</div>
-                        <div class="sub-title">平板電腦借用清單 (${weekMsg})</div>
+                        <table class="page-spacing-table">
+                            <thead><tr><td></td></tr></thead>
+                            <tbody><tr><td>
+                                <div class="main-title">觀塘官立小學(秀明道)</div>
+                                <div class="sub-title">平板電腦借用清單 (${weekMsg})</div>
                 `;
 
                 let isFirstDay = true;
@@ -1064,7 +1073,7 @@
 
                     // 將日期標題放入 thead 內，當表格跨頁時，整個 thead (包含日期) 都會在下一頁頂部重複印出
                     htmlContent += `
-                        <table>
+                        <table class="content-table">
                             <thead>
                                 <tr>
                                     <th colspan="7" style="border: none; background: transparent; padding: 0 0 5px 0;">
@@ -1119,18 +1128,19 @@
                 });
 
                 htmlContent += `
+                            </td></tr></tbody>
+                            <tfoot><tr><td></td></tr></tfoot>
+                        </table>
                     </body>
                     </html>
                 `;
 
-                // 建立彈出視窗並以原生的視窗 onload 事件處理列印，解決 Babel 編譯失敗問題
                 const printWindow = window.open('', '_blank');
                 if (printWindow) {
                     printWindow.document.open();
                     printWindow.document.write(htmlContent);
                     printWindow.document.close();
                     
-                    // 當彈出視窗的內容載入完成後自動觸發列印
                     printWindow.onload = function() {
                         printWindow.setTimeout(function() {
                             printWindow.print();
@@ -1277,7 +1287,7 @@
                             @page { size: A4 portrait; margin: 0; }
                             body { 
                                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-                                padding: 15mm; /* 加大 Padding 預留列印邊界 */
+                                padding: 0 15mm; /* 只設定左右邊界 15mm */
                                 -webkit-print-color-adjust: exact !important; 
                                 print-color-adjust: exact !important;
                                 margin: 0;
@@ -1285,22 +1295,32 @@
                             .main-title { color: #003366; font-size: 20px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
                             .sub-title { font-size: 16px; margin-bottom: 20px; }
                             
-                            /* 表格換頁控制 */
-                            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; }
-                            tr { page-break-inside: avoid; break-inside: avoid; }
-                            thead { display: table-header-group; } /* 確保表頭在換頁時自動重複 */
+                            /* 外層控制上下邊界 (15mm) 的 Table，利用 thead/tfoot 在每一頁重複的特性來模擬邊距 */
+                            .page-spacing-table { width: 100%; border: none; border-collapse: collapse; }
+                            .page-spacing-table > thead > tr > td, 
+                            .page-spacing-table > tfoot > tr > td { height: 15mm; border: none; padding: 0; background: transparent; }
+                            .page-spacing-table > tbody > tr > td { border: none; padding: 0; background: transparent; }
+
+                            /* 內部內容表格與換頁控制 */
+                            .content-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; }
+                            .content-table tr { page-break-inside: avoid; break-inside: avoid; }
+                            .content-table thead { display: table-header-group; } /* 確保表頭在換頁時自動重複 */
                             
-                            th, td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
-                            .header-row th { background-color: #CCE5FF; font-weight: bold; }
+                            .content-table th, .content-table td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
+                            .content-table .header-row th { background-color: #CCE5FF; font-weight: bold; border: 1px solid black; }
                             .cart-2 { background-color: #E2EFDA !important; } /* 2號車專屬綠底 */
+                            
                             .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; width: 100%; }
                             .date-text { font-size: 18px; font-weight: bold; color: black; text-align: left; }
                             .print-date { font-size: 12px; color: black; font-weight: normal; }
                         </style>
                     </head>
                     <body>
-                        <div class="main-title">觀塘官立小學(秀明道)</div>
-                        <div class="sub-title">平板電腦職工推車安排 (${weekMsg})</div>
+                        <table class="page-spacing-table">
+                            <thead><tr><td></td></tr></thead>
+                            <tbody><tr><td>
+                                <div class="main-title">觀塘官立小學(秀明道)</div>
+                                <div class="sub-title">平板電腦職工推車安排 (${weekMsg})</div>
                 `;
 
                 let isFirstDay = true;
@@ -1316,7 +1336,7 @@
 
                     // 將日期標題放入 thead 內，當表格跨頁時，整個 thead (包含日期) 都會在下一頁頂部重複印出
                     htmlContent += `
-                        <table>
+                        <table class="content-table">
                             <thead>
                                 <tr>
                                     <th colspan="5" style="border: none; background: transparent; padding: 0 0 5px 0;">
@@ -1366,6 +1386,9 @@
                 });
 
                 htmlContent += `
+                            </td></tr></tbody>
+                            <tfoot><tr><td></td></tr></tfoot>
+                        </table>
                     </body>
                     </html>
                 `;

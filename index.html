@@ -1195,14 +1195,13 @@
                 titleRow2.getCell(1).font = { size: 12 };
                 titleRow2.getCell(1).alignment = { horizontal: 'left' };
 
-                // 加入右上角車號標示框
-                const cartText = visibleCarts.length > 0 ? visibleCarts.join('、') : '無指定車號';
+                // 加入右上角車號標示框 (無邊框、靠右對齊、格式為 (x號車,x號車))
+                const cartText = visibleCarts.length > 0 ? `(${visibleCarts.join(',')})` : '(無指定車號)';
                 ws.mergeCells('D1:E2');
                 const cartCell = ws.getCell('D1');
                 cartCell.value = cartText;
                 cartCell.font = { bold: true, size: 16, color: { argb: 'FF003366' } };
-                cartCell.alignment = { horizontal: 'center', vertical: 'middle' };
-                cartCell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                cartCell.alignment = { horizontal: 'right', vertical: 'middle' };
 
                 // 3. 處理清單資料
                 let isFirstDay = true;
@@ -1329,8 +1328,15 @@
                         <table class="page-spacing-table">
                             <thead><tr><td></td></tr></thead>
                             <tbody><tr><td>
-                                <div class="main-title">觀塘官立小學(秀明道)</div>
-                                <div class="sub-title">平板電腦職工推車安排 (${weekMsg})</div>
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div>
+                                        <div class="main-title">觀塘官立小學(秀明道)</div>
+                                        <div class="sub-title">平板電腦職工推車安排 (${weekMsg})</div>
+                                    </div>
+                                    <div style="font-size: 20px; font-weight: bold; color: #003366; text-align: right; margin-top: 2px;">
+                                        ${visibleCarts.length > 0 ? `(${visibleCarts.join(',')})` : '(無指定車號)'}
+                                    </div>
+                                </div>
                 `;
 
                 let isFirstDay = true;

@@ -2015,7 +2015,7 @@
                                 <Truck size={14} className="mr-1 sm:w-4 sm:h-4 w-3.5 h-3.5" /> 3號車<span className="hidden sm:inline pl-1">(2-6年級科技課專用)</span>
                             </button>
                             <div className="flex-1"></div>
-                            {mode === 'normal' && (
+                            {mode === 'normal' && (loginRole === 'admin' || loginRole === 'office') && (
                                 <>
                                 <button onClick={handleExportExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
                                     匯出檔案
@@ -2025,7 +2025,7 @@
                                 </button>
                                 </>
                             )}
-                            {mode === 'office' && (
+                            {mode === 'office' && (loginRole === 'admin' || loginRole === 'office') && (
                                 <>
                                 <button onClick={handleExportOfficeExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
                                     匯出檔案

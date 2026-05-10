@@ -1943,7 +1943,7 @@
                                     const isBlackBold = ['小息', '小休', '午膳', '午息'].includes(period.name);
                                     return (
                                         <tr key={period.id} className="bg-gray-50">
-                                        <td className={`border border-black p-1 text-center ${isBlackBold ? 'text-black font-bold text-sm' : 'text-gray-500 text-xs font-medium'}`} colSpan={6}>
+                                        <td className={`border border-black p-2 text-center ${isBlackBold ? 'text-black font-extrabold text-base sm:text-lg' : 'text-gray-700 font-bold text-sm sm:text-base'}`} colSpan={6}>
                                             {period.name} ({period.time})
                                         </td>
                                         </tr>
@@ -1951,9 +1951,9 @@
                                 }
                                 return (
                                 <tr key={period.id}>
-                                    <td className="border border-black p-2 bg-gray-200 text-xs font-medium text-center align-middle w-36">
-                                    <div className="font-bold text-sm mb-1 text-gray-800 whitespace-nowrap">{period.name}</div>
-                                    <div className="text-gray-600 whitespace-nowrap">
+                                    <td className="border border-black p-2 bg-gray-200 text-center align-middle w-36">
+                                    <div className="font-extrabold text-base sm:text-lg mb-1 text-gray-900 whitespace-nowrap">{period.name}</div>
+                                    <div className="font-bold text-sm sm:text-base text-gray-800 whitespace-nowrap">
                                         <span>{period.time}</span>
                                     </div>
                                     </td>

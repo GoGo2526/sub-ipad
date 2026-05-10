@@ -342,7 +342,11 @@
             const bookings = [...INITIAL_BOOKINGS.filter(b => !dbBookingIds.has(String(b.id))), ...dbBookings];
 
             const [notification, setNotification] = useState({ show: false, message: '', type: '' });
-            const [isAdmin, setIsAdmin] = useState(false);
+            
+            // 透過 sessionStorage 讀取初始登入狀態，解決 reload 跳出問題
+            const [loginRole, setLoginRole] = useState(() => sessionStorage.getItem('loginRole')); 
+            const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('isAdmin') === 'true');
+            
             const [showAdminModal, setShowAdminModal] = useState(false);
             const [unlockTargetId, setUnlockTargetId] = useState(null);
             const [adminPassword, setAdminPassword] = useState('');
@@ -365,7 +369,6 @@
             })();
             const [viewDate, setViewDate] = useState(defaultViewDateStr);
             
-            const [loginRole, setLoginRole] = useState(null); // 'user', 'admin', 'office'
             const [loginPassword, setLoginPassword] = useState('');
             
             // 7. 新增管理車號顯示的狀態
@@ -1528,6 +1531,8 @@
                 if (inputHex === '536d722d3132333435') {
                     setLoginRole('user');
                     setIsAdmin(false);
+                    sessionStorage.setItem('loginRole', 'user');
+                    sessionStorage.setItem('isAdmin', 'false');
                     
                     const defaultDate = getUserDefaultDate();
                     const dObj = new Date(defaultDate);
@@ -1549,6 +1554,8 @@
                 } else if (inputHex === '536d722d32353236') {
                     setLoginRole('admin');
                     setIsAdmin(true);
+                    sessionStorage.setItem('loginRole', 'admin');
+                    sessionStorage.setItem('isAdmin', 'true');
                     
                     const defaultDate = getAdminDefaultDate();
                     const dObj = new Date(defaultDate);
@@ -1570,6 +1577,8 @@
                 } else if (inputHex === '536d722d32363038') {
                     setLoginRole('office');
                     setIsAdmin(false);
+                    sessionStorage.setItem('loginRole', 'office');
+                    sessionStorage.setItem('isAdmin', 'false');
                     setActiveTab('schedule');
                     showNotification('登入成功！校務處模式');
                 } else {
@@ -1581,6 +1590,8 @@
             const handleLogout = () => {
                 setLoginRole(null);
                 setIsAdmin(false);
+                sessionStorage.removeItem('loginRole');
+                sessionStorage.removeItem('isAdmin');
                 setLoginPassword('');
                 setActiveTab('form');
                 showNotification('已登出系統');
@@ -1805,14 +1816,15 @@
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-5 md:space-y-8">
-                    <div className="flex flex-row gap-2 sm:gap-4 md:gap-8 w-full">
-                        <div className="flex-1 w-1/2 min-w-0 space-y-1.5 md:space-y-2">
+                    {/* 修正：將 flex-row 修改為 flex-col sm:flex-row 並調整寬度以解決手機版重疊問題 */}
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-8 w-full">
+                        <div className="flex-1 w-full sm:w-1/2 min-w-0 space-y-1.5 md:space-y-2">
                         <label className="text-sm md:text-base font-medium text-gray-700 whitespace-nowrap">借用日期</label>
-                        <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full px-1 sm:px-2.5 py-2 sm:p-2.5 md:p-3.5 text-xs sm:text-base md:text-lg border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none box-border block" required />
+                        <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full px-2 sm:px-2.5 py-2 sm:p-2.5 md:p-3.5 text-sm sm:text-base md:text-lg border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none box-border block" required />
                         </div>
-                        <div className="flex-1 w-1/2 min-w-0 space-y-1.5 md:space-y-2">
+                        <div className="flex-1 w-full sm:w-1/2 min-w-0 space-y-1.5 md:space-y-2">
                         <label className="text-sm md:text-base font-medium text-gray-700 whitespace-nowrap">星期</label>
-                        <input type="text" name="day" value={formData.day} readOnly className="w-full px-1 sm:px-2.5 py-2 sm:p-2.5 md:p-3.5 text-xs sm:text-base md:text-lg border rounded-lg bg-gray-50 text-gray-500 outline-none cursor-not-allowed text-ellipsis whitespace-nowrap overflow-hidden box-border block" />
+                        <input type="text" name="day" value={formData.day} readOnly className="w-full px-2 sm:px-2.5 py-2 sm:p-2.5 md:p-3.5 text-sm sm:text-base md:text-lg border rounded-lg bg-gray-50 text-gray-500 outline-none cursor-not-allowed text-ellipsis whitespace-nowrap overflow-hidden box-border block" />
                         </div>
                     </div>
 

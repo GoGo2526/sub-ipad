@@ -355,6 +355,7 @@
             const [weekStatuses, setWeekStatuses] = useState({}); // 儲存各週是否已完成編排的狀態
             const [unconfirmedAlert, setUnconfirmedAlert] = useState({ show: false, list: [], weekDates: [] }); // 新增：用於顯示未確認清單的彈出視窗狀態
             const [rearrangeConfirm, setRearrangeConfirm] = useState(null); // 新增：用於連堂自動調節確認
+            const [deleteConfirmId, setDeleteConfirmId] = useState(null); // 新增：用於刪除確認視窗
 
             // 根據身份及截數時間決定表單預設日期
             const defaultDateStr = getUserDefaultDate(); // 載入頁面時預設為一般使用者視角
@@ -1688,7 +1689,7 @@
                             {!viewOnly && !isSystemFixed && !booking.isConfirmed && (
                                 <div className="flex items-center space-x-1">
                                     <span onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="cursor-pointer opacity-0 group-hover:opacity-100 text-white bg-green-700 hover:bg-green-800 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10">編輯</span>
-                                    <span onClick={(e) => { e.stopPropagation(); deleteBooking(booking.id); }} className="cursor-pointer opacity-0 group-hover:opacity-100 text-red-600 bg-red-100 hover:bg-red-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10">刪除</span>
+                                    <span onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(booking.id); }} className="cursor-pointer opacity-0 group-hover:opacity-100 text-red-600 bg-red-100 hover:bg-red-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10">刪除</span>
                                 </div>
                             )}
                         </div>
@@ -2621,7 +2622,7 @@
                                         showNotification(`設定確認失敗：${error.message}`, 'error');
                                     }
                                 }} 
-                                className="px-8 py-2.5 text-white bg-fuchsia-600 hover:bg-fuchsia-700 rounded-lg font-bold transition-colors w-full shadow-sm"
+                                className="px-8 py-2.5 text-white bg-[#800000] hover:bg-[#600000] rounded-lg font-bold transition-colors w-full shadow-sm"
                             >
                                 全部借用課堂設定成「已確認」
                             </button>
@@ -2672,6 +2673,25 @@
                 );
             };
 
+            const renderDeleteModal = () => {
+                if (!deleteConfirmId) return null;
+                return (
+                <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertCircle className="w-8 h-8 text-red-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">確認刪除紀錄？</h3>
+                        <p className="text-sm text-gray-600 mb-6">此操作將無法復原，您確定要刪除這筆借用紀錄嗎？</p>
+                        <div className="flex justify-center space-x-3">
+                            <button onClick={() => setDeleteConfirmId(null)} className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">取消</button>
+                            <button onClick={() => { deleteBooking(deleteConfirmId); setDeleteConfirmId(null); }} className="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors">確認刪除</button>
+                        </div>
+                    </div>
+                </div>
+                );
+            };
+
             if (!loginRole) {
                 return (
                     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -2711,6 +2731,7 @@
 
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8 relative print:bg-white print:p-0">
+                {renderDeleteModal()}
                 {renderRearrangeModal()}
                 {renderUnconfirmedModal()}
                 {renderUnlockModal()}

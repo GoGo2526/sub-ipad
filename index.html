@@ -1800,14 +1800,14 @@
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-5 md:space-y-8">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
-                        <div className="space-y-1.5 md:space-y-2">
+                    <div className="flex flex-row gap-2 sm:gap-4 md:gap-8">
+                        <div className="flex-1 min-w-0 space-y-1.5 md:space-y-2">
                         <label className="text-sm md:text-base font-medium text-gray-700">借用日期</label>
-                        <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full p-2.5 md:p-3.5 md:text-lg border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
+                        <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full px-1.5 py-2 sm:p-2.5 md:p-3.5 text-[11px] sm:text-base md:text-lg border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
                         </div>
-                        <div className="space-y-1.5 md:space-y-2">
+                        <div className="flex-1 min-w-0 space-y-1.5 md:space-y-2">
                         <label className="text-sm md:text-base font-medium text-gray-700">星期</label>
-                        <input type="text" name="day" value={formData.day} readOnly className="w-full p-2.5 md:p-3.5 md:text-lg border rounded-lg bg-gray-50 text-gray-500 outline-none cursor-not-allowed" />
+                        <input type="text" name="day" value={formData.day} readOnly className="w-full px-1.5 py-2 sm:p-2.5 md:p-3.5 text-[11px] sm:text-base md:text-lg border rounded-lg bg-gray-50 text-gray-500 outline-none cursor-not-allowed text-ellipsis whitespace-nowrap overflow-hidden" />
                         </div>
                     </div>
 
@@ -2003,12 +2003,12 @@
             const renderRecords = () => (
                 <div className="space-y-2 w-full max-w-full overflow-hidden">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-4 relative">
-                    <h2 className="text-xl font-bold text-gray-800 flex flex-col sm:flex-row sm:items-center">
+                    <h2 className="text-xl font-bold text-gray-800 flex flex-row items-center flex-wrap">
                     <div className="flex items-center">
                         <List className="mr-2 text-blue-600 flex-shrink-0" size={24} />
                         <span>借用紀錄清單</span>
                     </div>
-                    <span className="text-base text-gray-600 sm:ml-2 mt-1 sm:mt-0">(按車號分配)</span>
+                    <span className="text-base text-gray-600 ml-2">(按車號分配)</span>
                     </h2>
 
                     <div className="block sm:inline-block bg-blue-50 text-blue-800 px-3.5 py-2 rounded-md text-sm font-semibold border border-blue-100 shadow-sm mt-3 overflow-x-auto w-full sm:w-auto">

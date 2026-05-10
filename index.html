@@ -129,6 +129,17 @@
             '星期五': { 7: '導修', 8: '課外活動', 9: '課外活動' },
         };
 
+        // --- 設定特定不設借用的日期 (MM-DD 格式) ---
+        const BLACKOUT_DATES = {
+            '05-25': '佛誕翌日',
+            '06-04': '考試',
+            '06-05': '考試',
+            '06-08': '考試',
+            '06-09': '考試',
+            '06-19': '端午節',
+            '06-26': '六年級畢業禮'
+        };
+
         // --- 下拉選單資料 ---
         const TEACHERS = ["張", "何", "李", "潘", "黎", "譚", "樊", "文", "鄧", "羅", "梁", "黃", "蔡", "伍", "袁", "皓", "和", "輝", "麗", "周", "董", "龍", "榗", "秋", "桂", "靜", "麥", "欣", "卓", "儀", "詠", "艷", "芬", "鄺", "佳", "月", "瀅", "兆", "笑", "冼", "彥", "琳", "劉", "泉", "葉", "恩", "汪", "趙", "楚", "達", "豪", "蓮", "廖", "婉", "慧", "Rachel"];
         const CLASSES = ["1A", "1B", "1C", "1D", "1E", "2A", "2B", "2C", "2D", "2E", "3A", "3B", "3C", "3D", "3E", "4A", "4B", "4C", "4D", "4E", "5A", "5B", "5C", "5D", "5E", "6A", "6B", "6C", "6D", "6E"];
@@ -168,17 +179,41 @@
             return `第${getISOWeek(monday)}週: ${monday.getMonth() + 1}月${monday.getDate()}日 至 ${friday.getMonth() + 1}月${friday.getDate()}日`;
         };
 
+        const isPastThursdayCutoff = () => {
+            const now = new Date();
+            const day = now.getDay() || 7; // 1 (星期一) - 7 (星期日)
+            const hour = now.getHours();
+            return (day > 4) || (day === 4 && hour >= 16);
+        };
+
+        const isPastFridayCutoff = () => {
+            const now = new Date();
+            const day = now.getDay() || 7;
+            const hour = now.getHours();
+            return (day > 5) || (day === 5 && hour >= 16);
+        };
+
+        // --- 優化預約週次顯示範圍 ---
         const generateBookingRangeMsg = () => {
-            const today = new Date();
-            const dayOfWeek = today.getDay() || 7;
-            const nextMonday = new Date(today);
-            nextMonday.setDate(today.getDate() - dayOfWeek + 8);
+            const baseDate = new Date();
+            const isCutoff = isPastThursdayCutoff();
 
-            const nextFriday = new Date(nextMonday);
-            nextFriday.setDate(nextMonday.getDate() + 4);
+            // 當每週四下午4時後，自動順延可預約週次一週
+            if (isCutoff) {
+                baseDate.setDate(baseDate.getDate() + 7);
+            }
 
-            const weekAfterNextMonday = new Date(nextMonday);
-            weekAfterNextMonday.setDate(nextMonday.getDate() + 7);
+            const dayOfWeek = baseDate.getDay() || 7;
+            
+            // 計算目標的「下週一」
+            const targetNextMonday = new Date(baseDate);
+            targetNextMonday.setDate(baseDate.getDate() - dayOfWeek + 8);
+
+            const nextFriday = new Date(targetNextMonday);
+            nextFriday.setDate(targetNextMonday.getDate() + 4);
+
+            const weekAfterNextMonday = new Date(targetNextMonday);
+            weekAfterNextMonday.setDate(targetNextMonday.getDate() + 7);
 
             const weekAfterNextFriday = new Date(weekAfterNextMonday);
             weekAfterNextFriday.setDate(weekAfterNextMonday.getDate() + 4);
@@ -189,22 +224,46 @@
 
             return (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:text-left">
-                <span className="whitespace-nowrap sm:mr-1 font-bold text-blue-900 mb-1 sm:mb-0">預約日期:</span>
-                <div className="flex flex-col sm:hidden">
-                    <span>第{getISOWeek(nextMonday)}週: {formatRange(nextMonday, nextFriday)}</span>
-                    <span>第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
-                </div>
-                <div className="hidden sm:inline">
-                    <span>第{getISOWeek(nextMonday)}週: {formatRange(nextMonday, nextFriday)} 及 第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
-                </div>
+                <span className="whitespace-nowrap sm:mr-1 font-bold text-[#800000] mb-1 sm:mb-0">可預約週次:</span>
+                
+                {isCutoff ? (
+                    <>
+                    <div className="flex flex-col sm:hidden">
+                        <span>第{getISOWeek(targetNextMonday)}週: {formatRange(targetNextMonday, nextFriday)}</span>
+                        <span>第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
+                        <span className="text-red-600 font-bold text-xs mt-1">(逢星期四下午4時後將暫停下周預約)</span>
+                    </div>
+                    <div className="hidden sm:flex items-center flex-wrap">
+                        <span>第{getISOWeek(targetNextMonday)}週: {formatRange(targetNextMonday, nextFriday)} 及 第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
+                        <span className="text-red-600 font-bold sm:ml-2">(逢星期四下午4時後將暫停下周預約)</span>
+                    </div>
+                    </>
+                ) : (
+                    <>
+                    <div className="flex flex-col sm:hidden">
+                        <span>第{getISOWeek(targetNextMonday)}週: {formatRange(targetNextMonday, nextFriday)}</span>
+                        <span>第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
+                    </div>
+                    <div className="hidden sm:flex items-center">
+                        <span>第{getISOWeek(targetNextMonday)}週: {formatRange(targetNextMonday, nextFriday)} 及 第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
+                    </div>
+                    </>
+                )}
                 </div>
             );
         };
 
-        const initToday = new Date();
-        const initDay = initToday.getDay() || 7;
-        const initMonday = new Date(initToday);
-        initMonday.setDate(initToday.getDate() - initDay + 1);
+        const getBaseMonday = () => {
+            const d = new Date();
+            if (isPastFridayCutoff()) {
+                const day = d.getDay() || 7;
+                d.setDate(d.getDate() + (8 - day)); // 過了週五下午4時，系統週次推進至下星期
+            }
+            const currentDay = d.getDay() || 7;
+            d.setDate(d.getDate() - currentDay + 1);
+            return d;
+        };
+        const initMonday = getBaseMonday();
 
         const getDateStrFromMonday = (daysToAdd) => {
             const d = new Date(initMonday);
@@ -212,11 +271,18 @@
             return getLocalYYYYMMDD(d);
         };
 
-        const isPastThursdayCutoff = () => {
-            const now = new Date();
-            const day = now.getDay() || 7; // 1 (星期一) - 7 (星期日)
-            const hour = now.getHours();
-            return (day > 4) || (day === 4 && hour >= 16);
+        const getUserDefaultDate = () => {
+            const d = new Date();
+            const day = d.getDay() || 7;
+            d.setDate(d.getDate() - day + 8); // 預設下星期一
+            if (isPastThursdayCutoff()) {
+                d.setDate(d.getDate() + 7); // 過了週四下午4時，預設改為下下星期一
+            }
+            return getLocalYYYYMMDD(d);
+        };
+
+        const getAdminDefaultDate = () => {
+            return getLocalYYYYMMDD(new Date()); // 管理員預設當日
         };
 
         // --- 初始模擬數據 ---
@@ -286,18 +352,18 @@
             const [unconfirmedAlert, setUnconfirmedAlert] = useState({ show: false, list: [], weekDates: [] }); // 新增：用於顯示未確認清單的彈出視窗狀態
             const [rearrangeConfirm, setRearrangeConfirm] = useState(null); // 新增：用於連堂自動調節確認
 
-            // 根據星期四下午4時後自動顯示下星期的邏輯
-            const defaultDateStr = (() => {
-                if (isPastThursdayCutoff()) {
-                    return getDateStrFromMonday(7); // 下星期一
-                }
-                return getLocalYYYYMMDD(new Date());
-            })();
+            // 根據身份及截數時間決定表單預設日期
+            const defaultDateStr = getUserDefaultDate(); // 載入頁面時預設為一般使用者視角
             const defaultDateObj = new Date(defaultDateStr);
             const defaultDayIdx = defaultDateObj.getDay();
-            const defaultFormDay = (defaultDayIdx === 0 || defaultDayIdx === 6) ? '週末(不可借用)' : DAYS[defaultDayIdx - 1];
+            const defaultFormDay = (defaultDayIdx === 0 || defaultDayIdx === 6) ? '週末及週日(不可借用)' : DAYS[defaultDayIdx - 1];
 
-            const [viewDate, setViewDate] = useState(defaultDateStr);
+            const defaultViewDateStr = (() => {
+                if (isPastFridayCutoff()) return getDateStrFromMonday(0); // 星期五4時後顯示推移後的「本週」(即下星期)
+                if (isPastThursdayCutoff()) return getDateStrFromMonday(7); // 星期四4時後預設看下星期
+                return getLocalYYYYMMDD(new Date());
+            })();
+            const [viewDate, setViewDate] = useState(defaultViewDateStr);
             
             const [loginRole, setLoginRole] = useState(null); // 'user', 'admin', 'office'
             const [loginPassword, setLoginPassword] = useState('');
@@ -311,7 +377,7 @@
             const [formData, setFormData] = useState({
                 date: defaultDateStr,
                 day: defaultFormDay,
-                periods: [1],
+                periods: [],
                 className: '',
                 subject: '',
                 teacher: '',
@@ -381,7 +447,7 @@
                 if (name === 'date') {
                     const d = new Date(value);
                     const dayIdx = d.getDay();
-                    let newDay = '週末(不可借用)';
+                    let newDay = '週末及週日(不可借用)';
                     if (dayIdx >= 1 && dayIdx <= 5) newDay = DAYS[dayIdx - 1];
                     setFormData(prev => ({ ...prev, date: value, day: newDay }));
                 } else {
@@ -407,6 +473,11 @@
 
             // 1. 增加連堂優先安排相同車號之邏輯判定
             const planAssignments = (date, day, periods, subject, className) => {
+                const dateSuffix = date.substring(5);
+                if (BLACKOUT_DATES[dateSuffix]) {
+                    return { success: false, message: `選擇的日期為 ${BLACKOUT_DATES[dateSuffix]}，暫停借用。` };
+                }
+
                 const isGrade2To6Tech = /^[2-6]/.test(className) && subject.includes('科技');
                 let assignments = {};
 
@@ -651,7 +722,7 @@
                         await addDoc(getCollRef(), b);
                     }
                     showNotification(`成功借用！已為您安排 ${data.periods.length} 節課堂。`);
-                    setFormData(prev => ({ ...prev, className: '', subject: '', teacher: '', ta: '', periods: [1] }));
+                    setFormData(prev => ({ ...prev, className: '', subject: '', teacher: '', ta: '', periods: [] }));
                     setRearrangeConfirm(null); // 清除確認狀態
                 } catch (error) {
                     console.error("寫入資料庫失敗:", error);
@@ -671,8 +742,14 @@
                     return;
                 }
 
-                if (formData.day === '週末(不可借用)') {
-                    showNotification('週末不提供借用服務，請重新選擇日期！', 'error');
+                if (formData.day === '週末及週日(不可借用)') {
+                    showNotification('週末及週日不提供借用服務，請重新選擇日期！', 'error');
+                    return;
+                }
+
+                const dateSuffix = formData.date.substring(5);
+                if (BLACKOUT_DATES[dateSuffix]) {
+                    showNotification(`借用失敗：${formData.date} 為 ${BLACKOUT_DATES[dateSuffix]}，暫停借用服務！`, 'error');
                     return;
                 }
 
@@ -686,9 +763,22 @@
                     return;
                 }
 
-                const nextMondayStr = getDateStrFromMonday(7);
-                if (isPastThursdayCutoff() && formData.date < nextMondayStr) {
-                    showNotification('星期四下午4時後已暫停本星期的預借服務，請預約下週或之後的日期。', 'error');
+                const getMondayStr = (offset) => {
+                    const d = new Date();
+                    const day = d.getDay() || 7;
+                    d.setDate(d.getDate() - day + 1 + (offset * 7));
+                    return getLocalYYYYMMDD(d);
+                };
+                const nextMondayStr = getMondayStr(1);
+                const weekAfterNextMondayStr = getMondayStr(2);
+
+                if (!isAdmin && formData.date < nextMondayStr) {
+                    showNotification('一般使用者只可預約未來兩星期的課節，本星期及過去日期不設預約。', 'error');
+                    return;
+                }
+                
+                if (!isAdmin && isPastThursdayCutoff() && formData.date < weekAfterNextMondayStr) {
+                    showNotification('星期四下午4時後已暫停下星期的借用安排，請預約下下週或之後的日期。', 'error');
                     return;
                 }
 
@@ -773,6 +863,12 @@
 
                 const booking = bookings.find(b => b.id.toString() === bookingId);
                 if (!booking) return;
+
+                const dateSuffix = newDate.substring(5);
+                if (BLACKOUT_DATES[dateSuffix]) {
+                    showNotification(`無法移至 ${BLACKOUT_DATES[dateSuffix]}！`, 'error');
+                    return;
+                }
 
                 if (BLACKOUT_PERIODS[newDay] && BLACKOUT_PERIODS[newDay][newPeriod]) {
                     showNotification('無法移至特別課堂時段！', 'error');
@@ -1429,15 +1525,47 @@
                 e.preventDefault();
                 const inputHex = stringToHex(loginPassword);
                 
-                // 比對的字串皆為密碼明文的 16進位編碼，隱藏原始密碼
-
                 if (inputHex === '536d722d3132333435') {
                     setLoginRole('user');
                     setIsAdmin(false);
+                    
+                    const defaultDate = getUserDefaultDate();
+                    const dObj = new Date(defaultDate);
+                    const dIdx = dObj.getDay();
+                    const defaultDay = (dIdx === 0 || dIdx === 6) ? '週末及週日(不可借用)' : DAYS[dIdx - 1];
+                    
+                    setFormData({
+                        date: defaultDate,
+                        day: defaultDay,
+                        periods: [],
+                        className: '',
+                        subject: '',
+                        teacher: '',
+                        qty: 35,
+                        ta: ''
+                    });
+                    
                     showNotification('登入成功！一般使用者模式');
                 } else if (inputHex === '536d722d32353236') {
                     setLoginRole('admin');
                     setIsAdmin(true);
+                    
+                    const defaultDate = getAdminDefaultDate();
+                    const dObj = new Date(defaultDate);
+                    const dIdx = dObj.getDay();
+                    const defaultDay = (dIdx === 0 || dIdx === 6) ? '週末及週日(不可借用)' : DAYS[dIdx - 1];
+                    
+                    setFormData({
+                        date: defaultDate,
+                        day: defaultDay,
+                        periods: [],
+                        className: '',
+                        subject: '',
+                        teacher: '',
+                        qty: 35,
+                        ta: ''
+                    });
+                    
                     showNotification('登入成功！系統管理員模式');
                 } else if (inputHex === '536d722d32363038') {
                     setLoginRole('office');
@@ -1585,18 +1713,32 @@
             const renderForm = () => {
                 let availabilityMsg = "";
                 let isFull = false;
+                
+                const getMondayStr = (offset) => {
+                    const d = new Date();
+                    const day = d.getDay() || 7;
+                    d.setDate(d.getDate() - day + 1 + (offset * 7));
+                    return getLocalYYYYMMDD(d);
+                };
+                const nextMondayStr = getMondayStr(1);
+                const weekAfterNextMondayStr = getMondayStr(2);
+                
+                const dateSuffix = formData.date.substring(5);
 
-                if (formData.day === '週末(不可借用)') {
-                    availabilityMsg = "週末不提供借用服務，請選擇星期一至星期五的日期。";
+                if (formData.day === '週末及週日(不可借用)') {
+                    availabilityMsg = "週末及週日不提供借用服務，請選擇星期一至星期五的日期。";
+                    isFull = true;
+                } else if (BLACKOUT_DATES[dateSuffix]) {
+                    availabilityMsg = `系統提示：${formData.date} 為 ${BLACKOUT_DATES[dateSuffix]}，暫停借用服務。`;
                     isFull = true;
                 } else if (formData.periods.length === 0) {
                     availabilityMsg = "請點選欲借用的課節。";
                 } else {
-                    const nextMondayStr = getDateStrFromMonday(7);
-                    const isBookingCurrentWeekAfterCutoff = isPastThursdayCutoff() && (formData.date < nextMondayStr);
-
-                    if (isBookingCurrentWeekAfterCutoff) {
-                        availabilityMsg = "系統提示：星期四下午4時後已暫停本星期的預借服務，請預約下週或之後的日期。";
+                    if (!isAdmin && formData.date < nextMondayStr) {
+                        availabilityMsg = "系統提示：一般使用者只可預約未來兩星期的課節，本星期及過去日期不設預約。";
+                        isFull = true;
+                    } else if (!isAdmin && isPastThursdayCutoff() && formData.date < weekAfterNextMondayStr) {
+                        availabilityMsg = "系統提示：星期四下午4時後已暫停下星期的借用安排，請預約可預約週次的日期。";
                         isFull = true;
                     } else {
                         const plan = planAssignments(formData.date, formData.day, formData.periods, formData.subject, formData.className);
@@ -1645,13 +1787,20 @@
 
                 return (
                 <div className="w-full md:max-w-4xl lg:max-w-5xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-sm border border-gray-100">
-                    <div className="flex items-center space-x-2 md:space-x-3 mb-6 md:mb-8 pb-4 border-b">
-                    <MonitorSmartphone className="text-blue-600 w-6 h-6 md:w-8 md:h-8" />
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-800">平板電腦借用申請</h2>
+                    <div className="mb-6 md:mb-8 pb-4 border-b">
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-800 flex flex-col sm:flex-row items-start sm:items-center">
+                            <div className="flex items-center">
+                                <MonitorSmartphone className="text-blue-600 w-6 h-6 md:w-8 md:h-8 mr-2 md:mr-3 flex-shrink-0" />
+                                <span>平板電腦借用申請</span>
+                            </div>
+                        </h2>
+                        <div className="block sm:inline-block bg-blue-50 text-blue-800 px-3.5 py-2 rounded-md text-sm font-semibold border border-blue-100 shadow-sm mt-3 overflow-x-auto w-full sm:w-auto">
+                            {generateBookingRangeMsg()}
+                        </div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-5 md:space-y-8">
-                    <div className="grid grid-cols-2 gap-4 md:gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
                         <div className="space-y-1.5 md:space-y-2">
                         <label className="text-sm md:text-base font-medium text-gray-700">借用日期</label>
                         <input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full p-2.5 md:p-3.5 md:text-lg border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
@@ -1809,10 +1958,14 @@
                                         (b.isRecurring && b.day === wd.name && b.period === period.id) ||
                                         (!b.isSystem && !b.isRecurring && b.date === wd.dateStr && b.period === period.id)
                                     );
-                                    const isBlackout = cellBookings.some(b => b.isSystem);
+                                    
+                                    const dateSuffix = wd.dateStr.substring(5);
+                                    const isDateBlackout = BLACKOUT_DATES[dateSuffix];
+                                    const isSystemBlackout = cellBookings.some(b => b.isSystem);
+                                    const isBlackout = isDateBlackout || isSystemBlackout;
 
                                     if (isBlackout) {
-                                        const remark = cellBookings.find(b => b.isSystem).remark;
+                                        const remark = isDateBlackout || cellBookings.find(b => b.isSystem).remark;
                                         return (
                                         <td key={`${wd.name}-${period.id}`} className="border border-black p-2 align-middle text-center bg-[#f5f5dc]">
                                             <span className="text-black font-extrabold text-[15px]">{remark}</span>
@@ -1855,7 +2008,7 @@
                         <List className="mr-2 text-blue-600 flex-shrink-0" size={24} />
                         <span>借用紀錄清單</span>
                     </div>
-                    <span className="text-base text-gray-600 sm:ml-2 mt-1 sm:mt-0">(按車輛分類時間表)</span>
+                    <span className="text-base text-gray-600 sm:ml-2 mt-1 sm:mt-0">(按車號分配)</span>
                     </h2>
 
                     <div className="block sm:inline-block bg-blue-50 text-blue-800 px-3.5 py-2 rounded-md text-sm font-semibold border border-blue-100 shadow-sm mt-3 overflow-x-auto w-full sm:w-auto">
@@ -2118,10 +2271,14 @@
                                     (b.isRecurring && b.day === wd.name && b.period === period.id) ||
                                     (!b.isSystem && !b.isRecurring && b.date === wd.dateStr && b.period === period.id)
                                 );
-                                const isBlackout = cellBookings.some(b => b.isSystem);
+                                
+                                const dateSuffix = wd.dateStr.substring(5);
+                                const isDateBlackout = BLACKOUT_DATES[dateSuffix];
+                                const isSystemBlackout = cellBookings.some(b => b.isSystem);
+                                const isBlackout = isDateBlackout || isSystemBlackout;
 
                                 if (isBlackout) {
-                                    const remark = cellBookings.find(b => b.isSystem).remark;
+                                    const remark = isDateBlackout || cellBookings.find(b => b.isSystem).remark;
                                     return (
                                     <td key={`${wd.name}-${period.id}`} className="border border-black p-3 align-middle text-center bg-[#f5f5dc]">
                                         <span className="text-black font-extrabold text-base">{remark}</span>
@@ -2265,6 +2422,12 @@
                         e.preventDefault();
                         if (!user) { showNotification('尚未登入', 'error'); return; }
                         
+                        const dateSuffix = editTargetBooking.date.substring(5);
+                        if (BLACKOUT_DATES[dateSuffix]) {
+                            showNotification(`該日期為 ${BLACKOUT_DATES[dateSuffix]}，不可安排借用！`, 'error');
+                            return;
+                        }
+
                         if (BLACKOUT_PERIODS[editTargetBooking.day] && BLACKOUT_PERIODS[editTargetBooking.day][editTargetBooking.period]) {
                             showNotification('無法移至特別課堂時段！', 'error');
                             return;

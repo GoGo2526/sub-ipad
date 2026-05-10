@@ -2614,16 +2614,16 @@
                                         for (let b of unconfirmedAlert.list) {
                                             await setDoc(getDocRef(String(b.id)), { ...b, isConfirmed: true }, { merge: true });
                                         }
-                                        showNotification('已成功將所有借用課堂設定成「確認」。', 'success');
+                                        showNotification('已成功將所有借用課堂設定成「已確認」。', 'success');
                                         setUnconfirmedAlert({ show: false, list: [], weekDates: [] });
                                     } catch (error) {
                                         console.error("批次設定確認失敗:", error);
                                         showNotification(`設定確認失敗：${error.message}`, 'error');
                                     }
                                 }} 
-                                className="px-8 py-2.5 text-white bg-purple-600 hover:bg-purple-700 rounded-lg font-bold transition-colors w-full shadow-sm"
+                                className="px-8 py-2.5 text-white bg-fuchsia-600 hover:bg-fuchsia-700 rounded-lg font-bold transition-colors w-full shadow-sm"
                             >
-                                全部借用課堂設定成「確認」
+                                全部借用課堂設定成「已確認」
                             </button>
                         </div>
                     </div>

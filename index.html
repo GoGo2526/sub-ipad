@@ -1930,9 +1930,11 @@
                                 節數/時間
                                 </th>
                                 {weekDates.map(wd => (
-                                <th key={wd.name} className="border border-black p-2 bg-blue-100 text-center text-blue-900">
-                                    <div className="font-extrabold text-lg">{wd.display}</div>
-                                    <div className="font-bold text-base">{wd.name}</div>
+                                <th key={wd.name} className="border border-black p-1 sm:p-2 bg-blue-100 text-center text-blue-900 align-middle">
+                                    <div className="flex flex-row sm:flex-col justify-center items-center w-full">
+                                        <div className="w-1/2 sm:w-full font-extrabold text-[13px] sm:text-lg text-right sm:text-center pr-1 sm:pr-0">{wd.display}</div>
+                                        <div className="w-1/2 sm:w-full font-bold text-[12px] sm:text-base text-left sm:text-center pl-1 sm:pl-0">{wd.name}</div>
+                                    </div>
                                 </th>
                                 ))}
                             </tr>
@@ -2224,9 +2226,11 @@
                             節數/時間
                             </th>
                             {weekDates.map(wd => (
-                            <th key={wd.name} className="border border-black p-3 bg-blue-100 text-center text-blue-900">
-                                <div className="font-extrabold text-lg">{wd.display}</div>
-                                <div className="font-bold text-base">{wd.name}</div>
+                            <th key={wd.name} className="border border-black p-1 sm:p-3 bg-blue-100 text-center text-blue-900 align-middle">
+                                <div className="flex flex-row sm:flex-col justify-center items-center w-full">
+                                    <div className="w-1/2 sm:w-full font-extrabold text-[13px] sm:text-lg text-right sm:text-center pr-1 sm:pr-0">{wd.display}</div>
+                                    <div className="w-1/2 sm:w-full font-bold text-[12px] sm:text-base text-left sm:text-center pl-1 sm:pl-0">{wd.name}</div>
+                                </div>
                             </th>
                             ))}
                         </tr>

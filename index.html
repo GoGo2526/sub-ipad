@@ -2601,12 +2601,29 @@
                                 })}
                             </div>
                         </div>
-                        <div className="flex justify-center">
+                        <div className="flex flex-col justify-center space-y-2">
                             <button 
                                 onClick={() => setUnconfirmedAlert({ show: false, list: [], weekDates: [] })} 
                                 className="px-8 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-colors w-full"
                             >
                                 確認
+                            </button>
+                            <button 
+                                onClick={async () => {
+                                    try {
+                                        for (let b of unconfirmedAlert.list) {
+                                            await setDoc(getDocRef(String(b.id)), { ...b, isConfirmed: true }, { merge: true });
+                                        }
+                                        showNotification('已成功將所有借用課堂設定成「確認」。', 'success');
+                                        setUnconfirmedAlert({ show: false, list: [], weekDates: [] });
+                                    } catch (error) {
+                                        console.error("批次設定確認失敗:", error);
+                                        showNotification(`設定確認失敗：${error.message}`, 'error');
+                                    }
+                                }} 
+                                className="px-8 py-2.5 text-white bg-purple-600 hover:bg-purple-700 rounded-lg font-bold transition-colors w-full shadow-sm"
+                            >
+                                全部借用課堂設定成「確認」
                             </button>
                         </div>
                     </div>

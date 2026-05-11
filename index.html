@@ -2320,7 +2320,7 @@
                                 <span className="text-gray-600 mr-1 sm:mr-2 font-bold whitespace-nowrap flex-shrink-0">半日上課：</span>
                                 {weekDates.map(wd => {
                                     const isHalfDay = weekHalfDays[currentMondayStr]?.[wd.dateStr] || false;
-                                    const isDisabled = mode !== 'normal'; // 只有在「每週平板電腦借用總表」可以更改
+                                    const isDisabled = mode !== 'normal' || !isAdmin; // 只有管理員在「每週平板電腦借用總表」可以更改
                                     return (
                                         <label key={wd.dateStr} className={`flex items-center mr-2 sm:mr-4 ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:text-blue-600'}`}>
                                             <input

@@ -487,7 +487,7 @@
                 let assignments = {};
 
                 const getAvailableCarts = (pid) => {
-                    if (BLACKOUT_PERIODS[day] && BLACKOUT_PERIODS[day][pid]) return [];
+                    if (!isAdmin && BLACKOUT_PERIODS[day] && BLACKOUT_PERIODS[day][pid]) return [];
                     const currentBookings = bookings.filter(b =>
                         !b.isSystem &&
                         b.period === pid &&
@@ -503,7 +503,7 @@
                 // 2-6 年級科技課獨立處理
                 if (isGrade2To6Tech) {
                     for (let pid of periods) {
-                        if (BLACKOUT_PERIODS[day] && BLACKOUT_PERIODS[day][pid]) {
+                        if (!isAdmin && BLACKOUT_PERIODS[day] && BLACKOUT_PERIODS[day][pid]) {
                             return { success: false, message: `第${pid}節為 ${BLACKOUT_PERIODS[day][pid]}，暫停借用。` };
                         }
                         const currentBookings = bookings.filter(b => !b.isSystem && b.period === pid && (b.date === date || (b.isRecurring && b.day === day)));
@@ -817,7 +817,7 @@
                 if (formData.cart) {
                     for (let pid of formData.periods) {
                         // 檢查系統鎖定課堂
-                        if (BLACKOUT_PERIODS[formData.day] && BLACKOUT_PERIODS[formData.day][pid]) {
+                        if (!isAdmin && BLACKOUT_PERIODS[formData.day] && BLACKOUT_PERIODS[formData.day][pid]) {
                             showNotification(`第${pid}節為 ${BLACKOUT_PERIODS[formData.day][pid]}，暫停借用。`, 'error');
                             return;
                         }
@@ -912,7 +912,7 @@
                     return;
                 }
 
-                if (BLACKOUT_PERIODS[newDay] && BLACKOUT_PERIODS[newDay][newPeriod]) {
+                if (!isAdmin && BLACKOUT_PERIODS[newDay] && BLACKOUT_PERIODS[newDay][newPeriod]) {
                     showNotification('無法移至特別課堂時段！', 'error');
                     return;
                 }
@@ -2032,9 +2032,9 @@
                                     const dateSuffix = wd.dateStr.substring(5);
                                     const isDateBlackout = BLACKOUT_DATES[dateSuffix];
                                     const isSystemBlackout = cellBookings.some(b => b.isSystem);
-                                    const isBlackout = isDateBlackout || isSystemBlackout;
+                                    const booking = cellBookings.find(b => !b.isSystem && b.cart === cartLabel);
 
-                                    if (isBlackout) {
+                                    if (isDateBlackout || (isSystemBlackout && !isAdmin && !booking)) {
                                         const remark = isDateBlackout || cellBookings.find(b => b.isSystem).remark;
                                         return (
                                         <td key={`${wd.name}-${period.id}`} className="border border-black p-2 align-middle text-center bg-[#f5f5dc]">
@@ -2043,18 +2043,16 @@
                                         );
                                     }
 
-                                    const booking = cellBookings.find(b => b.cart === cartLabel);
-
                                     return (
                                         <td
                                         key={`${wd.name}-${period.id}`}
-                                        className="border border-black p-2 align-top transition-colors hover:bg-gray-50 h-full"
-                                        onDragOver={(e) => e.preventDefault()}
+                                        className={`border border-black p-2 align-top transition-colors h-full ${isSystemBlackout ? 'bg-[#f5f5dc]' : ''} hover:bg-gray-50`}
+                                        onDragOver={(e) => { if (isAdmin || !isSystemBlackout) e.preventDefault(); }}
                                         onDrop={(e) => handleDrop(e, wd.dateStr, period.id, wd.name, cartLabel)}
                                         >
                                         {booking ? renderBookingCard(booking, themeStyles) : (
-                                            <div className="h-full w-full min-h-[76px] flex items-center justify-center text-transparent hover:text-gray-300 border-2 border-transparent hover:border-dashed hover:border-gray-300 rounded transition-all">
-                                            可拖曳至此
+                                            <div className="h-full w-full min-h-[76px] flex items-center justify-center text-transparent hover:text-gray-500 border-2 border-transparent hover:border-dashed hover:border-gray-400 rounded transition-all text-xs font-bold text-center">
+                                            {isSystemBlackout ? `移入(${cellBookings.find(b => b.isSystem).remark})` : '可拖曳至此'}
                                             </div>
                                         )}
                                         </td>
@@ -2347,9 +2345,9 @@
                                 const dateSuffix = wd.dateStr.substring(5);
                                 const isDateBlackout = BLACKOUT_DATES[dateSuffix];
                                 const isSystemBlackout = cellBookings.some(b => b.isSystem);
-                                const isBlackout = isDateBlackout || isSystemBlackout;
+                                const hasRealBooking = cellBookings.some(b => !b.isSystem && visibleCarts.includes(b.cart));
 
-                                if (isBlackout) {
+                                if (isDateBlackout || (isSystemBlackout && !hasRealBooking)) {
                                     const remark = isDateBlackout || cellBookings.find(b => b.isSystem).remark;
                                     return (
                                     <td key={`${wd.name}-${period.id}`} className="border border-black p-3 align-middle text-center bg-[#f5f5dc]">
@@ -2361,9 +2359,12 @@
                                 return (
                                     <td
                                     key={`${wd.name}-${period.id}`}
-                                    className="border border-black p-2 align-top bg-gray-50 transition-colors"
+                                    className={`border border-black p-2 align-top transition-colors ${isSystemBlackout ? 'bg-[#f5f5dc]' : 'bg-gray-50'}`}
                                     >
                                     <div className="flex flex-col h-full space-y-1">
+                                        {isSystemBlackout && (
+                                            <div className="text-center font-bold text-[10px] text-gray-500 mb-0.5 leading-none">({cellBookings.find(b => b.isSystem).remark})</div>
+                                        )}
                                         {['1號車', '2號車', '3號車'].map((cartLabel) => {
                                             // 過濾未被選擇顯示的車號
                                             if (!visibleCarts.includes(cartLabel)) return null;
@@ -2500,7 +2501,7 @@
                             return;
                         }
 
-                        if (BLACKOUT_PERIODS[editTargetBooking.day] && BLACKOUT_PERIODS[editTargetBooking.day][editTargetBooking.period]) {
+                        if (!isAdmin && BLACKOUT_PERIODS[editTargetBooking.day] && BLACKOUT_PERIODS[editTargetBooking.day][editTargetBooking.period]) {
                             showNotification('無法移至特別課堂時段！', 'error');
                             return;
                         }

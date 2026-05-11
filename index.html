@@ -2037,17 +2037,17 @@
                     </span>
                     </h3>
                     <div className="overflow-x-auto w-full pb-4">
-                        <table className="w-full border-collapse border border-black min-w-[1200px] xl:min-w-full table-fixed">
+                        <table className="w-full border-collapse border border-black min-w-[900px] md:min-w-[1200px] xl:min-w-full table-fixed">
                             <thead>
                             <tr>
-                                <th className="border border-black p-2 bg-blue-100 text-center w-36 text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap">
+                                <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-24 sm:w-36 min-w-[6rem] sm:min-w-[9rem] text-sm sm:text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap align-middle">
                                 節數/時間
                                 </th>
                                 {weekDates.map(wd => (
                                 <th key={wd.name} className="border border-black p-1 sm:p-2 bg-blue-100 text-center text-blue-900 align-middle w-[16%]">
-                                    <div className="flex flex-row sm:flex-col justify-center items-center w-full">
-                                        <div className="w-1/2 sm:w-full font-extrabold text-[13px] sm:text-lg text-right sm:text-center pr-1 sm:pr-0">{wd.display}</div>
-                                        <div className="w-1/2 sm:w-full font-bold text-[12px] sm:text-base text-left sm:text-center pl-1 sm:pl-0">{wd.name}</div>
+                                    <div className="flex flex-col justify-center items-center w-full">
+                                        <div className="w-full font-extrabold text-[13px] sm:text-lg text-center">{wd.display}</div>
+                                        <div className="w-full font-bold text-[12px] sm:text-base text-center">{wd.name}</div>
                                     </div>
                                 </th>
                                 ))}
@@ -2352,17 +2352,17 @@
                     </div>
 
                     <div className="print-overflow-visible overflow-x-auto">
-                        <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1200px] xl:min-w-full">
+                        <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[900px] md:min-w-[1200px] xl:min-w-full">
                         <thead>
                             <tr>
                             <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-24 sm:w-36 min-w-[6rem] sm:min-w-[9rem] shadow-sm align-middle">
                                 <div className="text-[13px] sm:text-lg font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
                             </th>
                             {weekDates.map(wd => (
-                                <th key={wd.name} className="border border-black p-1 sm:p-2 bg-blue-100 text-center text-blue-900 w-[16%]">
-                                <div className="flex flex-row sm:flex-col justify-center items-center w-full">
-                                    <div className="w-1/2 sm:w-full font-extrabold text-[13px] sm:text-lg text-right sm:text-center pr-1 sm:pr-0">{wd.display}</div>
-                                    <div className="w-1/2 sm:w-full font-bold text-[12px] sm:text-base text-left sm:text-center pl-1 sm:pl-0">{wd.name}</div>
+                                <th key={wd.name} className="border border-black p-1 sm:p-2 bg-blue-100 text-center text-blue-900 align-middle w-[16%]">
+                                <div className="flex flex-col justify-center items-center w-full">
+                                    <div className="w-full font-extrabold text-[13px] sm:text-lg text-center">{wd.display}</div>
+                                    <div className="w-full font-bold text-[12px] sm:text-base text-center">{wd.name}</div>
                                 </div>
                                 </th>
                             ))}

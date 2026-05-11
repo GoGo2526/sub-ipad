@@ -121,6 +121,18 @@
             { id: 9, name: '第9節', time: '2:45 - 3:15' },
         ];
 
+        const HALF_DAY_TIMES = {
+            1: '8:30 - 8:55',
+            2: '8:55 - 9:20',
+            3: '9:35 - 10:00',
+            4: '10:00 - 10:25',
+            5: '10:25 - 10:50',
+            6: '10:50 - 11:15',
+            7: '11:30 - 11:55',
+            8: '11:55 - 12:20',
+            9: '12:20 - 12:30'
+        };
+
         const BLACKOUT_PERIODS = {
             '星期一': { 9: '導修' },
             '星期二': { 8: '綜合課', 9: '綜合課' },
@@ -353,6 +365,7 @@
             const [editTargetBooking, setEditTargetBooking] = useState(null);
             const [assignWorkerTarget, setAssignWorkerTarget] = useState(null); // 用於儲存要指派職工的課堂
             const [weekStatuses, setWeekStatuses] = useState({}); // 儲存各週是否已完成編排的狀態
+            const [weekHalfDays, setWeekHalfDays] = useState({}); // 新增：儲存各週各日是否為半日上課
             const [unconfirmedAlert, setUnconfirmedAlert] = useState({ show: false, list: [], weekDates: [] }); // 新增：用於顯示未確認清單的彈出視窗狀態
             const [rearrangeConfirm, setRearrangeConfirm] = useState(null); // 新增：用於連堂自動調節確認
             const [deleteConfirmId, setDeleteConfirmId] = useState(null); // 新增：用於刪除確認視窗
@@ -426,13 +439,16 @@
                     // 修正：將週狀態存儲在 bookings 集合中，避免 Firebase 權限阻擋新集合
                     const normalBookings = cloudData.filter(doc => !String(doc.id).startsWith('week_status_'));
                     const statuses = {};
+                    const halfDaysObj = {};
                     cloudData.filter(doc => String(doc.id).startsWith('week_status_')).forEach(doc => {
                         const mondayStr = String(doc.id).replace('week_status_', '');
                         statuses[mondayStr] = doc.isArranged;
+                        halfDaysObj[mondayStr] = doc.halfDays || {};
                     });
                     
                     setDbBookings(normalBookings);
                     setWeekStatuses(statuses);
+                    setWeekHalfDays(halfDaysObj);
                 }, (error) => {
                     console.error("讀取資料失敗:", error);
                 });
@@ -962,6 +978,19 @@
                 );
             };
 
+            const handleHalfDayToggle = async (mondayStr, dateStr, currentValue) => {
+                if (!user) return;
+                try {
+                    const ref = getDocRef(`week_status_${mondayStr}`);
+                    const currentHalfDays = weekHalfDays[mondayStr] || {};
+                    const newHalfDays = { ...currentHalfDays, [dateStr]: !currentValue };
+                    await setDoc(ref, { halfDays: newHalfDays }, { merge: true });
+                } catch (err) {
+                    console.error("更新半日設定失敗:", err);
+                    showNotification(`更新設定失敗：${err.message}`, 'error');
+                }
+            };
+
             const handleWeekStatusToggle = async (mondayStr, currentValue) => {
                 if (!user) return;
 
@@ -1013,6 +1042,7 @@
                     return;
                 }
                 const weekDates = getWeekDates(viewDate);
+                const currentMondayStr = weekDates[0].dateStr;
                 
                 const d = new Date();
                 const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
@@ -1105,10 +1135,12 @@
                             
                             // 更新：只有 2號車改為綠色底色，其餘維持白色
                             const rowColor = booking.cart === '2號車' ? 'FFE2EFDA' : 'FFFFFFFF';
+                            
+                            const actualTime = weekHalfDays[currentMondayStr]?.[wd.dateStr] ? (HALF_DAY_TIMES[period.id] || period.time) : period.time;
 
                             const row = ws.addRow([
                                 period.name, 
-                                period.time, 
+                                actualTime, 
                                 booking.cart, 
                                 booking.className, 
                                 booking.subject, 
@@ -1142,6 +1174,7 @@
 
             const handlePrintListFormat = () => {
                 const weekDates = getWeekDates(viewDate);
+                const currentMondayStr = weekDates[0].dateStr;
                 const d = new Date();
                 const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
                 const weekMsg = generateCurrentWeekMsg(viewDate);
@@ -1245,10 +1278,11 @@
                         periodBookings.forEach(booking => {
                             const taStr = booking.ta === '科任老師' ? `科任老師: ${booking.teacher}` : (booking.ta || '');
                             const rowClass = booking.cart === '2號車' ? 'cart-2' : '';
+                            const actualTime = weekHalfDays[currentMondayStr]?.[wd.dateStr] ? (HALF_DAY_TIMES[period.id] || period.time) : period.time;
                             htmlContent += `
                                 <tr class="${rowClass}">
                                     <td>${period.name}</td>
-                                    <td>${period.time}</td>
+                                    <td>${actualTime}</td>
                                     <td>${booking.cart}</td>
                                     <td>${booking.className}</td>
                                     <td>${booking.subject}</td>
@@ -1295,6 +1329,7 @@
                     return;
                 }
                 const weekDates = getWeekDates(viewDate);
+                const currentMondayStr = weekDates[0].dateStr;
                 const d = new Date();
                 const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
                 const weekNum = getISOWeek(new Date(weekDates[0].dateStr));
@@ -1383,9 +1418,10 @@
 
                         periodBookings.forEach(booking => {
                             const rowColor = booking.cart === '2號車' ? 'FFE2EFDA' : 'FFFFFFFF';
+                            const actualTime = weekHalfDays[currentMondayStr]?.[wd.dateStr] ? (HALF_DAY_TIMES[period.id] || period.time) : period.time;
                             const row = ws.addRow([
                                 period.name, 
-                                period.time, 
+                                actualTime, 
                                 booking.cart, 
                                 booking.className, 
                                 booking.workerCode || ''
@@ -1414,6 +1450,7 @@
 
             const handlePrintOfficeFormat = () => {
                 const weekDates = getWeekDates(viewDate);
+                const currentMondayStr = weekDates[0].dateStr;
                 const d = new Date();
                 const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
                 const weekMsg = generateCurrentWeekMsg(viewDate);
@@ -1521,10 +1558,11 @@
 
                         periodBookings.forEach(booking => {
                             const rowClass = booking.cart === '2號車' ? 'cart-2' : '';
+                            const actualTime = weekHalfDays[currentMondayStr]?.[wd.dateStr] ? (HALF_DAY_TIMES[period.id] || period.time) : period.time;
                             htmlContent += `
                                 <tr class="${rowClass}">
                                     <td>${period.name}</td>
-                                    <td>${period.time}</td>
+                                    <td>${actualTime}</td>
                                     <td>${booking.cart}</td>
                                     <td>${booking.className}</td>
                                     <td>${booking.workerCode || ''}</td>
@@ -2232,173 +2270,190 @@
                                 )}
                             </span>
                         </h2>
-                        {/* 7. 車號過濾切換按鈕 */}
-                        <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium w-full overflow-x-auto pb-1 sm:pb-0 scrollbar-hide print-hide">
-                            <span className="text-gray-600 mr-1 sm:mr-2 font-bold whitespace-nowrap flex-shrink-0">顯示/隱藏：</span>
-                            <button
-                                onClick={() => toggleCartVisibility('1號車')}
-                                className={`flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 flex-shrink-0 whitespace-nowrap ${visibleCarts.includes('1號車') ? 'text-blue-700 bg-blue-100 border-blue-300' : 'text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
-                            >
-                                <Truck size={14} className="mr-1 sm:w-4 sm:h-4 w-3.5 h-3.5" /> 1號車
-                            </button>
-                            <button
-                                onClick={() => toggleCartVisibility('2號車')}
-                                className={`flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 flex-shrink-0 whitespace-nowrap ${visibleCarts.includes('2號車') ? 'text-green-700 bg-green-100 border-green-300' : 'text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
-                            >
-                                <Truck size={14} className="mr-1 sm:w-4 sm:h-4 w-3.5 h-3.5" /> 2號車
-                            </button>
-                            <button
-                                onClick={() => toggleCartVisibility('3號車')}
-                                className={`flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 flex-shrink-0 whitespace-nowrap ${visibleCarts.includes('3號車') ? 'text-purple-700 bg-purple-100 border-purple-300' : 'text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
-                            >
-                                <Truck size={14} className="mr-1 sm:w-4 sm:h-4 w-3.5 h-3.5" /> 3號車<span className="hidden sm:inline pl-1">(2-6年級科技課專用)</span>
-                            </button>
-                            <div className="flex-1"></div>
-                            {mode === 'normal' && (loginRole === 'admin' || loginRole === 'office') && (
-                                <>
-                                <button onClick={handleExportExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
-                                    匯出檔案
+                        {/* 將車號顯示與半日上課設定包裝在一個容器內 */}
+                        <div className="flex flex-col gap-3 w-full">
+                            {/* 7. 車號過濾切換按鈕 */}
+                            <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium w-full overflow-x-auto pb-1 sm:pb-0 scrollbar-hide print-hide">
+                                <span className="text-gray-600 mr-1 sm:mr-2 font-bold whitespace-nowrap flex-shrink-0">顯示/隱藏：</span>
+                                <button
+                                    onClick={() => toggleCartVisibility('1號車')}
+                                    className={`flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 flex-shrink-0 whitespace-nowrap ${visibleCarts.includes('1號車') ? 'text-blue-700 bg-blue-100 border-blue-300' : 'text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+                                >
+                                    <Truck size={14} className="mr-1 sm:w-4 sm:h-4 w-3.5 h-3.5" /> 1號車
                                 </button>
-                                <button onClick={handlePrintListFormat} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
-                                    列印檔案
+                                <button
+                                    onClick={() => toggleCartVisibility('2號車')}
+                                    className={`flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 flex-shrink-0 whitespace-nowrap ${visibleCarts.includes('2號車') ? 'text-green-700 bg-green-100 border-green-300' : 'text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+                                >
+                                    <Truck size={14} className="mr-1 sm:w-4 sm:h-4 w-3.5 h-3.5" /> 2號車
                                 </button>
-                                </>
-                            )}
-                            {mode === 'office' && (loginRole === 'admin' || loginRole === 'office') && (
-                                <>
-                                <button onClick={handleExportOfficeExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
-                                    匯出檔案
+                                <button
+                                    onClick={() => toggleCartVisibility('3號車')}
+                                    className={`flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 flex-shrink-0 whitespace-nowrap ${visibleCarts.includes('3號車') ? 'text-purple-700 bg-purple-100 border-purple-300' : 'text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+                                >
+                                    <Truck size={14} className="mr-1 sm:w-4 sm:h-4 w-3.5 h-3.5" /> 3號車
                                 </button>
-                                <button onClick={handlePrintOfficeFormat} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
-                                    列印檔案
-                                </button>
-                                </>
-                            )}
+                                {mode === 'normal' && (
+                                    <>
+                                    <button onClick={handleExportExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
+                                        匯出檔案
+                                    </button>
+                                    <button onClick={handlePrintListFormat} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
+                                        列印檔案
+                                    </button>
+                                    </>
+                                )}
+                                {mode === 'office' && (loginRole === 'admin' || loginRole === 'office') && (
+                                    <>
+                                    <button onClick={handleExportOfficeExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
+                                        匯出檔案
+                                    </button>
+                                    <button onClick={handlePrintOfficeFormat} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-indigo-700 bg-indigo-100 border-indigo-300 hover:bg-indigo-200 whitespace-nowrap flex-shrink-0">
+                                        列印檔案
+                                    </button>
+                                    </>
+                                )}
+                            </div>
+                            
+                            {/* 半日上課設定 */}
+                            <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-medium w-full overflow-x-auto pb-1 sm:pb-0 scrollbar-hide print-hide border-t border-gray-200 pt-2 mt-1">
+                                <span className="text-gray-600 mr-1 sm:mr-2 font-bold whitespace-nowrap flex-shrink-0">半日上課：</span>
+                                {weekDates.map(wd => {
+                                    const isHalfDay = weekHalfDays[currentMondayStr]?.[wd.dateStr] || false;
+                                    const isDisabled = mode !== 'normal'; // 只有在「每週平板電腦借用總表」可以更改
+                                    return (
+                                        <label key={wd.dateStr} className={`flex items-center mr-2 sm:mr-4 ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:text-blue-600'}`}>
+                                            <input
+                                                type="checkbox"
+                                                className={`mr-1.5 w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 rounded focus:ring-blue-500 ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                                checked={isHalfDay}
+                                                disabled={isDisabled}
+                                                onChange={() => handleHalfDayToggle(currentMondayStr, wd.dateStr, isHalfDay)}
+                                            />
+                                            <span className="whitespace-nowrap">{wd.name}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
 
                     <div className="print-overflow-visible overflow-x-auto">
-                    <table className="w-full border-collapse border border-black min-w-[1000px] table-fixed schedule-table">
-                        <thead className="table-header-group">
-                        {/* 加入這行隱藏的列，在列印時作為每頁上方的 Margin，從而避開 @page { margin: 0 } 帶來的無邊界問題 */}
-                        <tr className="hidden print:table-row">
-                            <th colSpan={weekDates.length + 1} className="h-[15mm] border-none bg-transparent"></th>
-                        </tr>
-                        <tr>
-                            <th className="border border-black p-2 bg-blue-100 text-center w-36 text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap">
-                            節數/時間
+                        <table className="w-full border-collapse border border-black schedule-table text-sm">
+                        <thead>
+                            <tr>
+                            <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-24 sm:w-36 min-w-[6rem] sm:min-w-[9rem] shadow-sm align-middle">
+                                <div className="text-[13px] sm:text-lg font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
                             </th>
                             {weekDates.map(wd => (
-                            <th key={wd.name} className="border border-black p-1 sm:p-3 bg-blue-100 text-center text-blue-900 align-middle">
+                                <th key={wd.name} className="border border-black p-1 sm:p-2 bg-blue-100 text-center text-blue-900 w-[14%] sm:w-[16%]">
                                 <div className="flex flex-row sm:flex-col justify-center items-center w-full">
                                     <div className="w-1/2 sm:w-full font-extrabold text-[13px] sm:text-lg text-right sm:text-center pr-1 sm:pr-0">{wd.display}</div>
                                     <div className="w-1/2 sm:w-full font-bold text-[12px] sm:text-base text-left sm:text-center pl-1 sm:pl-0">{wd.name}</div>
                                 </div>
-                            </th>
+                                </th>
                             ))}
-                        </tr>
+                            </tr>
                         </thead>
                         <tbody>
-                        {PERIODS.map((period) => {
+                            {PERIODS.map(period => {
                             if (period.isBreak) {
-                            const isBlackBold = ['小息', '小休', '午膳', '午息'].includes(period.name);
-                            return (
-                                <tr key={period.id} className="bg-gray-100" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                                <td className={`border border-black p-2 text-center ${isBlackBold ? 'text-black font-bold text-sm' : 'text-gray-600 text-sm font-medium'}`} colSpan={6}>
-                                    {period.name} {period.time && `(${period.time})`}
-                                </td>
+                                const isBlackBold = ['小息', '小休', '午膳', '午息'].includes(period.name);
+                                return (
+                                <tr key={period.id} className="bg-gray-50">
+                                    <td className={`border border-black p-1 sm:p-2 text-center ${isBlackBold ? 'text-black font-extrabold text-base sm:text-lg' : 'text-gray-700 font-bold text-sm sm:text-base'}`} colSpan={6}>
+                                    {period.name} ({period.time})
+                                    </td>
                                 </tr>
-                            );
+                                );
                             }
 
-                            // 因應揀選車號的多少自動調整節數及時間的文字大小和格子寬度
-                            let nameSizeClass = "text-xl sm:text-2xl print:text-base";
-                            let timeSizeClass = "text-base sm:text-lg print:text-sm";
-                            let cellPaddingClass = "p-3 sm:p-4 print:p-2";
-                            let colWidthClass = "w-32 sm:w-40 print:w-28";
+                            let periodNameClass = "font-extrabold mb-0.5 sm:mb-1 text-gray-900 whitespace-nowrap transition-all ";
+                            let periodTimeClass = "font-bold tracking-tighter whitespace-nowrap leading-none flex flex-col space-y-0.5 text-gray-800 transition-all ";
 
-                            if (visibleCarts.length === 2) {
-                                nameSizeClass = "text-base sm:text-lg print:text-sm";
-                                timeSizeClass = "text-xs sm:text-sm print:text-xs";
-                                cellPaddingClass = "p-2 sm:p-3 print:p-1";
-                                colWidthClass = "w-24 sm:w-28 print:w-20";
-                            } else if (visibleCarts.length === 1) {
-                                nameSizeClass = "text-xs sm:text-sm print:text-[11px] leading-tight";
-                                timeSizeClass = "text-[10px] sm:text-xs print:text-[9px] leading-tight";
-                                cellPaddingClass = "p-1 sm:p-1.5 print:p-0.5";
-                                colWidthClass = "w-16 sm:w-20 print:w-16";
+                            if (mode === 'normal') {
+                                if (visibleCarts.length >= 3) {
+                                    periodNameClass += "text-lg sm:text-2xl mt-2";
+                                    periodTimeClass += "text-sm sm:text-base mb-2";
+                                } else if (visibleCarts.length === 2) {
+                                    periodNameClass += "text-base sm:text-xl mt-1";
+                                    periodTimeClass += "text-xs sm:text-sm mb-1";
+                                } else {
+                                    periodNameClass += "text-sm sm:text-lg";
+                                    periodTimeClass += "text-[10px] sm:text-xs";
+                                }
+                            } else {
+                                periodNameClass += "text-sm sm:text-lg";
+                                periodTimeClass += "text-[10px] sm:text-xs";
                             }
 
                             return (
-                            <tr key={period.id} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                                <td className={`border border-black ${cellPaddingClass} bg-gray-200 font-medium text-center align-middle ${colWidthClass} transition-all duration-300`}>
-                                <div className={`font-bold mb-0.5 text-gray-800 whitespace-nowrap ${nameSizeClass} transition-all duration-300`}>{period.name}</div>
-                                <div className={`text-gray-600 whitespace-nowrap ${timeSizeClass} transition-all duration-300`}>
-                                    <span>{period.time}</span>
-                                </div>
+                                <tr key={period.id}>
+                                <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-24 sm:w-36 min-w-[6rem] sm:min-w-[9rem]">
+                                    <div className={periodNameClass}>{period.name}</div>
+                                    <div className={periodTimeClass}>
+                                        <span>{period.time}</span>
+                                    </div>
                                 </td>
                                 {weekDates.map(wd => {
-                                const cellBookings = bookings.filter(b =>
+                                    const cellBookings = bookings.filter(b =>
                                     (b.isSystem && b.day === wd.name && b.period === period.id) ||
                                     (b.isRecurring && b.day === wd.name && b.period === period.id) ||
                                     (!b.isSystem && !b.isRecurring && b.date === wd.dateStr && b.period === period.id)
-                                );
-                                
-                                const dateSuffix = wd.dateStr.substring(5);
-                                const isDateBlackout = BLACKOUT_DATES[dateSuffix];
-                                const isSystemBlackout = cellBookings.some(b => b.isSystem);
-                                const hasRealBooking = cellBookings.some(b => !b.isSystem && visibleCarts.includes(b.cart));
+                                    );
 
-                                if (isDateBlackout || (isSystemBlackout && !hasRealBooking)) {
+                                    const dateSuffix = wd.dateStr.substring(5);
+                                    const isDateBlackout = BLACKOUT_DATES[dateSuffix];
+                                    const isSystemBlackout = cellBookings.some(b => b.isSystem);
+
+                                    if (isDateBlackout || (isSystemBlackout && !isAdmin && cellBookings.filter(b => !b.isSystem).length === 0)) {
                                     const remark = isDateBlackout || cellBookings.find(b => b.isSystem).remark;
                                     return (
-                                    <td key={`${wd.name}-${period.id}`} className="border border-black p-3 align-middle text-center bg-[#f5f5dc]">
-                                        <span className="text-black font-extrabold text-base">{remark}</span>
-                                    </td>
+                                        <td key={`${wd.name}-${period.id}`} className="border border-black p-1 sm:p-2 align-middle text-center bg-[#f5f5dc]">
+                                        <span className="text-black font-extrabold text-[15px]">{remark}</span>
+                                        </td>
                                     );
-                                }
+                                    }
 
-                                return (
+                                    return (
                                     <td
-                                    key={`${wd.name}-${period.id}`}
-                                    className={`border border-black p-2 align-top transition-colors ${isSystemBlackout ? 'bg-[#f5f5dc]' : 'bg-gray-50'}`}
+                                        key={`${wd.name}-${period.id}`}
+                                        className={`border border-black p-1 sm:p-2 align-top transition-colors h-full ${isSystemBlackout ? 'bg-[#f5f5dc]' : ''} hover:bg-gray-50`}
+                                        onDragOver={(e) => { if (isAdmin || !isSystemBlackout) e.preventDefault(); }}
+                                        onDrop={(e) => handleDrop(e, wd.dateStr, period.id, wd.name)}
                                     >
-                                    <div className="flex flex-col h-full space-y-1">
+                                        <div className="flex flex-col h-full space-y-1">
                                         {isSystemBlackout && (
                                             <div className="text-center font-bold text-[10px] text-gray-500 mb-0.5 leading-none">({cellBookings.find(b => b.isSystem).remark})</div>
                                         )}
                                         {['1號車', '2號車', '3號車'].map((cartLabel) => {
-                                            // 過濾未被選擇顯示的車號
                                             if (!visibleCarts.includes(cartLabel)) return null;
 
-                                            const booking = cellBookings.find(b => b.cart === cartLabel);
+                                            const booking = cellBookings.find(b => b.cart === cartLabel && !b.isSystem);
                                             if (!booking) {
-                                                // 預留對應方塊的空間
+                                                if (isSystemBlackout) return null;
                                                 return (
                                                     <div key={`${cartLabel}-empty`} className="w-full rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center min-h-[65px] text-transparent select-none">
                                                         {cartLabel}
                                                     </div>
                                                 );
                                             }
-                                            
-                                            const card = renderSimplifiedScheduleCard(booking);
-                                            return card;
+                                            return renderSimplifiedScheduleCard(booking);
                                         })}
-                                    </div>
+                                        </div>
                                     </td>
-                                );
+                                    );
                                 })}
-                            </tr>
+                                </tr>
                             );
-                        })}
+                            })}
                         </tbody>
-                        {/* 加入這行隱藏的表尾，在列印時作為每頁下方的 Margin */}
                         <tfoot className="hidden print:table-footer-group">
                             <tr>
                                 <td colSpan={weekDates.length + 1} className="h-[15mm] border-none bg-transparent"></td>
                             </tr>
                         </tfoot>
-                    </table>
+                        </table>
                     </div>
                 </div>
                 </div>

@@ -2214,14 +2214,14 @@
                     }
 
                     return (
-                        <div key={booking.id} className={`p-2 rounded-lg border w-full flex flex-col justify-center shadow-sm min-h-[65px] mb-1 ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
-                            <div className="flex justify-between items-center text-sm font-bold mb-1">
+                        <div key={booking.id} className={`p-2 rounded-lg border w-full min-w-max flex flex-col justify-center shadow-sm min-h-[65px] mb-1 ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
+                            <div className="flex justify-between items-center text-[13px] sm:text-sm font-bold mb-1 flex-nowrap whitespace-nowrap space-x-2">
                                 <span>{booking.className} {booking.subject}({booking.teacher})</span>
-                                <span className="ml-1 whitespace-nowrap flex items-center">
+                                <span className="flex items-center flex-shrink-0">
                                     <Truck size={14} className="mr-0.5" /> {booking.cart}
                                 </span>
                             </div>
-                            <div className="text-sm font-medium opacity-90">
+                            <div className="text-[12px] sm:text-sm font-medium opacity-90 text-left whitespace-nowrap">
                                 {secondLine}
                             </div>
                         </div>

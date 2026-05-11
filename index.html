@@ -2051,8 +2051,10 @@
                                         onDrop={(e) => handleDrop(e, wd.dateStr, period.id, wd.name, cartLabel)}
                                         >
                                         {booking ? renderBookingCard(booking, themeStyles) : (
-                                            <div className="h-full w-full min-h-[76px] flex items-center justify-center text-transparent hover:text-gray-500 border-2 border-transparent hover:border-dashed hover:border-gray-400 rounded transition-all text-xs font-bold text-center">
-                                            {isSystemBlackout ? `移入(${cellBookings.find(b => b.isSystem).remark})` : '可拖曳至此'}
+                                            <div className={`h-full w-full min-h-[76px] flex items-center justify-center border-2 border-transparent hover:border-dashed hover:border-gray-400 rounded transition-all text-center ${isSystemBlackout ? 'text-black' : 'text-transparent hover:text-gray-500 text-xs font-bold'}`}>
+                                            {isSystemBlackout ? (
+                                                <span className="font-extrabold text-[15px]">{cellBookings.find(b => b.isSystem).remark}</span>
+                                            ) : '可拖曳至此'}
                                             </div>
                                         )}
                                         </td>

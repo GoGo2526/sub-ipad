@@ -2186,8 +2186,8 @@
                                     </div>
                                     {/* 下方約1/3: 車號 */}
                                     <div className="flex items-center mt-auto pt-1">
-                                        <div className="text-[11px] font-bold flex items-center whitespace-nowrap">
-                                            <Truck size={12} className="mr-0.5" /> {booking.cart}
+                                        <div className="text-[12px] sm:text-[14px] font-black flex items-center whitespace-nowrap">
+                                            <Truck size={12} className="mr-0.5" /> {booking.cart.replace('號車', '')}
                                         </div>
                                     </div>
                                 </div>
@@ -2232,16 +2232,54 @@
                         }
                     }
 
+                    const isGrade1Tech = /^[1][A-E]/.test(booking.className) && booking.subject?.includes('科技');
+                    const isSystemFixed = (booking.isRecurring || (booking.cart === '3號車' && booking.subject?.includes('科技'))) && !isGrade1Tech;
+
                     return (
-                        <div key={booking.id} className={`p-1.5 sm:p-2 rounded-lg border w-full flex flex-col justify-center shadow-sm h-[65px] sm:h-[70px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
+                        <div key={booking.id} className={`group p-1.5 sm:p-2 rounded-lg border w-full flex flex-col justify-start shadow-sm h-[65px] sm:h-[70px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
+                            {/* Top row: Class, Subject, Teacher AND Action Button */}
                             <div className="flex justify-between items-start text-[11px] sm:text-[13px] font-bold mb-0.5 space-x-1 overflow-hidden w-full">
-                                <span className="whitespace-normal break-words leading-tight flex-1 min-w-0 text-left">{booking.className} {booking.subject}({booking.teacher})</span>
-                                <span className="flex items-center flex-shrink-0 mt-0.5">
-                                    <Truck size={10} className="mr-0.5 sm:w-3 sm:h-3" /> {booking.cart}
+                                <span className="whitespace-normal break-words leading-tight flex-1 min-w-0 text-left">
+                                    {booking.className} {booking.subject}({booking.teacher})
                                 </span>
+                                {/* Action button / Status */}
+                                <div className="flex items-center flex-shrink-0 mt-0.5">
+                                    {isSystemFixed ? (
+                                        <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded whitespace-nowrap inline-block flex-shrink-0">固定</span>
+                                    ) : booking.isConfirmed ? (
+                                        <span 
+                                            className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded whitespace-nowrap inline-block flex-shrink-0 cursor-pointer hover:bg-green-200"
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                if (isAdmin) {
+                                                    setDoc(getDocRef(String(booking.id)), { ...booking, isConfirmed: false }, { merge: true });
+                                                } else {
+                                                    setUnlockTargetId(booking.id);
+                                                }
+                                            }}
+                                            title="點擊解除確認(需輸入管理員密碼)"
+                                        >
+                                            已確認
+                                        </span>
+                                    ) : (
+                                        <span 
+                                            onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} 
+                                            className="cursor-pointer text-blue-700 bg-blue-100 hover:bg-blue-200 px-1.5 py-0.5 rounded text-[10px] font-bold transition-all z-10 whitespace-nowrap flex-shrink-0"
+                                        >
+                                            編輯
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            <div className="text-[10px] sm:text-xs font-medium opacity-90 text-left whitespace-normal break-words leading-tight line-clamp-2 flex-1 min-w-0">
-                                {secondLine}
+                            
+                            {/* Bottom row: TA AND Cart */}
+                            <div className="flex justify-between items-end w-full mt-auto">
+                                <div className="text-[10px] sm:text-xs font-medium opacity-90 text-left whitespace-normal break-words leading-tight line-clamp-2 flex-1 min-w-0 pr-1">
+                                    {secondLine}
+                                </div>
+                                <div className="text-[12px] sm:text-[14px] font-black flex items-center whitespace-nowrap flex-shrink-0 text-gray-700">
+                                    <Truck size={12} className="mr-0.5" /> {booking.cart.replace('號車', '')}
+                                </div>
                             </div>
                         </div>
                     );
@@ -2603,7 +2641,11 @@
 
                         const { id, ...updateData } = editTargetBooking;
                         try {
-                            await setDoc(getDocRef(String(id)), { ...editTargetBooking }, { merge: true });
+                            // 若成功指派了 TA，則自動標記為已確認
+                            if (updateData.ta && updateData.ta.trim() !== '') {
+                                updateData.isConfirmed = true;
+                            }
+                            await setDoc(getDocRef(String(id)), { ...updateData }, { merge: true });
                             setEditTargetBooking(null);
                             showNotification('課堂資料已更新', 'success');
                         } catch (error) {
@@ -2652,7 +2694,7 @@
                         </div>
                         <div className="space-y-1">
                             <label className="text-sm font-medium text-gray-700">負責TA</label>
-                            <select value={editTargetBooking.ta} onChange={e => setEditTargetBooking({ ...editTargetBooking, ta: e.target.value })} disabled={isGrade2To6TechEdit} className={`w-full p-2 border rounded-lg outline-none ${isGrade2To6TechEdit ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}>
+                            <select value={editTargetBooking.ta} onChange={e => setEditTargetBooking({ ...editTargetBooking, ta: e.target.value })} className="w-full p-2 border rounded-lg outline-none bg-white">
                             <option value="">無</option>
                             {TAS.map(ta => <option key={ta} value={ta}>{ta}</option>)}
                             </select>
@@ -2706,8 +2748,8 @@
                             </select>
                         </div>
                         <div className="flex justify-end space-x-2">
-                        <button type="button" onClick={() => setAssignWorkerTarget(null)} className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">取消</button>
-                        <button type="submit" className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors">儲存</button>
+                            <button type="button" onClick={() => setAssignWorkerTarget(null)} className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">取消</button>
+                            <button type="submit" className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors">儲存</button>
                         </div>
                     </form>
                     </div>

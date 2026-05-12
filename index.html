@@ -172,11 +172,16 @@
         };
 
         const getISOWeek = (date) => {
-            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-            const dayNum = d.getUTCDay() || 7;
-            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            // 系統設定 2月2日 至 2月6日 為第1週 (基準日: 2026-02-02 星期一)
+            const termStart = new Date(2026, 1, 2); // 月份為 0-11，所以 1 代表 2月
+            const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            
+            // 計算與基準日的相差天數
+            const diffTime = target - termStart;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            // 每7天為一週，第1週為 0~6 天，故 +1
+            return Math.floor(diffDays / 7) + 1;
         };
 
         const generateCurrentWeekMsg = (dateStr) => {

@@ -1925,13 +1925,13 @@
                         <label className="text-sm md:text-base font-medium text-gray-700 block">
                         課節 <span className="text-blue-600 text-xs md:text-sm ml-1">(若連堂借用，教師可多選連堂節數)</span>
                         </label>
-                        <div className="flex flex-wrap gap-2 md:gap-3">
+                        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 md:gap-3">
                         {PERIODS.filter(p => !p.isBreak).map(p => (
                             <button
                             key={p.id}
                             type="button"
                             onClick={() => handlePeriodToggle(p.id)}
-                            className={`px-3.5 py-1.5 md:px-5 md:py-2.5 rounded-lg border text-sm md:text-base font-medium transition-colors ${formData.periods.includes(p.id)
+                            className={`w-full sm:w-auto px-1.5 py-2 md:px-5 md:py-2.5 rounded-lg border text-sm md:text-base font-medium transition-colors flex justify-center items-center ${formData.periods.includes(p.id)
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                 }`}
@@ -2040,7 +2040,7 @@
                         <table className="w-full border-collapse border border-black min-w-[900px] md:min-w-[1200px] xl:min-w-full table-fixed">
                             <thead>
                             <tr>
-                                <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-24 sm:w-36 min-w-[6rem] sm:min-w-[9rem] text-sm sm:text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap align-middle">
+                                <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[120px] sm:w-36 min-w-[120px] sm:min-w-[9rem] text-sm sm:text-lg text-blue-900 shadow-sm font-extrabold whitespace-nowrap align-middle">
                                 節數/時間
                                 </th>
                                 {weekDates.map(wd => (
@@ -2067,7 +2067,7 @@
                                 }
                                 return (
                                 <tr key={period.id}>
-                                    <td className="border border-black p-2 bg-gray-200 text-center align-middle w-36">
+                                    <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[120px] sm:w-36 min-w-[120px] sm:min-w-[9rem]">
                                     <div className="font-extrabold text-base sm:text-lg mb-1 text-gray-900 whitespace-nowrap">{period.name}</div>
                                     <div className="font-bold text-sm sm:text-base text-gray-800 whitespace-nowrap">
                                         <span>{period.time}</span>
@@ -2355,7 +2355,7 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[900px] md:min-w-[1200px] xl:min-w-full">
                         <thead>
                             <tr>
-                            <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-24 sm:w-36 min-w-[6rem] sm:min-w-[9rem] shadow-sm align-middle">
+                            <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[120px] sm:w-36 min-w-[120px] sm:min-w-[9rem] shadow-sm align-middle">
                                 <div className="text-[13px] sm:text-lg font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
                             </th>
                             {weekDates.map(wd => (
@@ -2402,7 +2402,7 @@
 
                             return (
                                 <tr key={period.id}>
-                                <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-24 sm:w-36 min-w-[6rem] sm:min-w-[9rem]">
+                                <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[120px] sm:w-36 min-w-[120px] sm:min-w-[9rem]">
                                     <div className={periodNameClass}>{period.name}</div>
                                     <div className={periodTimeClass}>
                                         <span>{period.time}</span>

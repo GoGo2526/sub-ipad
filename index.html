@@ -2243,28 +2243,13 @@
                                     {booking.className} {booking.subject}({booking.teacher})
                                 </span>
                                 {/* Action button / Status */}
-                                <div className="flex items-center flex-shrink-0 mt-0.5">
+                                <div className="flex items-start flex-shrink-0 leading-tight">
                                     {isSystemFixed ? (
-                                        <span className={`text-[11px] sm:text-[13px] font-bold whitespace-nowrap inline-block flex-shrink-0 ${themeStyles.actionText}`}>固定</span>
-                                    ) : booking.isConfirmed ? (
-                                        <span 
-                                            className={`text-[11px] sm:text-[13px] font-bold whitespace-nowrap inline-block flex-shrink-0 cursor-pointer hover:underline ${themeStyles.actionText}`}
-                                            onClick={(e) => { 
-                                                e.stopPropagation(); 
-                                                if (isAdmin) {
-                                                    setDoc(getDocRef(String(booking.id)), { ...booking, isConfirmed: false }, { merge: true });
-                                                } else {
-                                                    setUnlockTargetId(booking.id);
-                                                }
-                                            }}
-                                            title="點擊解除確認(需輸入管理員密碼)"
-                                        >
-                                            已確認
-                                        </span>
+                                        <span className={`whitespace-nowrap inline-block flex-shrink-0 ${themeStyles.actionText}`}>固定</span>
                                     ) : (
                                         <span 
                                             onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} 
-                                            className={`cursor-pointer text-[11px] sm:text-[13px] font-bold z-10 whitespace-nowrap flex-shrink-0 hover:underline ${themeStyles.actionText}`}
+                                            className={`cursor-pointer z-10 whitespace-nowrap flex-shrink-0 hover:underline ${themeStyles.actionText}`}
                                         >
                                             編輯
                                         </span>

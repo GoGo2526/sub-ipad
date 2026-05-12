@@ -2161,10 +2161,10 @@
 
                 // 2. 簡化版的顯示資訊卡片
                 const renderSimplifiedScheduleCard = (booking) => {
-                    let themeStyles = { bg: "bg-gray-100", border: "border-gray-200", text: "text-gray-800", label: "bg-gray-200 text-gray-800" };
-                    if (booking.cart === '1號車') themeStyles = { bg: "bg-blue-50", border: "border-blue-300", text: "text-blue-900", label: "bg-blue-200 text-blue-900" };
-                    if (booking.cart === '2號車') themeStyles = { bg: "bg-green-50", border: "border-green-300", text: "text-green-900", label: "bg-green-200 text-green-900" };
-                    if (booking.cart === '3號車') themeStyles = { bg: "bg-purple-50", border: "border-purple-300", text: "text-purple-900", label: "bg-purple-200 text-purple-900" };
+                    let themeStyles = { bg: "bg-gray-100", border: "border-gray-200", text: "text-gray-800", actionText: "text-gray-600" };
+                    if (booking.cart === '1號車') themeStyles = { bg: "bg-blue-50", border: "border-blue-300", text: "text-blue-900", actionText: "text-blue-700" };
+                    if (booking.cart === '2號車') themeStyles = { bg: "bg-green-50", border: "border-green-300", text: "text-green-900", actionText: "text-green-700" };
+                    if (booking.cart === '3號車') themeStyles = { bg: "bg-purple-50", border: "border-purple-300", text: "text-purple-900", actionText: "text-purple-700" };
 
                     // 針對「安排職務總表」與「校務處總表」的專屬佈局格式
                     if (mode === 'duty' || mode === 'office') {
@@ -2245,10 +2245,10 @@
                                 {/* Action button / Status */}
                                 <div className="flex items-center flex-shrink-0 mt-0.5">
                                     {isSystemFixed ? (
-                                        <span className={`text-[10px] font-bold px-1 whitespace-nowrap inline-block flex-shrink-0 ${themeStyles.label}`}>固定</span>
+                                        <span className={`text-[10px] font-bold whitespace-nowrap inline-block flex-shrink-0 ${themeStyles.actionText}`}>固定</span>
                                     ) : booking.isConfirmed ? (
                                         <span 
-                                            className={`text-[10px] font-bold px-1 whitespace-nowrap inline-block flex-shrink-0 cursor-pointer ${themeStyles.label}`}
+                                            className={`text-[10px] font-bold whitespace-nowrap inline-block flex-shrink-0 cursor-pointer hover:underline ${themeStyles.actionText}`}
                                             onClick={(e) => { 
                                                 e.stopPropagation(); 
                                                 if (isAdmin) {
@@ -2264,7 +2264,7 @@
                                     ) : (
                                         <span 
                                             onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} 
-                                            className={`cursor-pointer px-1 text-[10px] font-bold z-10 whitespace-nowrap flex-shrink-0 ${themeStyles.label}`}
+                                            className={`cursor-pointer text-[10px] font-bold z-10 whitespace-nowrap flex-shrink-0 hover:underline ${themeStyles.actionText}`}
                                         >
                                             編輯
                                         </span>

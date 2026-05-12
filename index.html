@@ -1767,7 +1767,7 @@
                             </div>
                             {!viewOnly && !isSystemFixed && !booking.isConfirmed && (
                                 <div className="flex items-center space-x-1 flex-shrink-0">
-                                    <span onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="cursor-pointer opacity-100 lg:opacity-0 group-hover:opacity-100 text-white bg-green-700 hover:bg-green-800 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10 whitespace-nowrap">編輯</span>
+                                    <span onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="cursor-pointer opacity-100 lg:opacity-0 group-hover:opacity-100 text-green-700 bg-green-100 hover:bg-green-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10 whitespace-nowrap">編輯</span>
                                     <span onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(booking.id); }} className="cursor-pointer opacity-100 lg:opacity-0 group-hover:opacity-100 text-red-600 bg-red-100 hover:bg-red-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10 whitespace-nowrap">刪除</span>
                                 </div>
                             )}

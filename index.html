@@ -2175,7 +2175,7 @@
                     if (mode === 'duty' || mode === 'office') {
                         const isComputerRoomFixed = /^[2-6]/.test(booking.className) && booking.subject?.includes('科技');
                         return (
-                            <div key={booking.id} className={`p-1.5 sm:p-2 rounded-lg border w-full flex shadow-sm h-[70px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
+                            <div key={booking.id} className={`p-1.5 sm:p-2 rounded-lg border w-full flex shadow-sm h-[65px] sm:h-[70px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
                                 {/* 左半邊 */}
                                 <div className="flex flex-col justify-between flex-1 pr-1 overflow-hidden">
                                     {/* 上方約2/3: 班別 (放大粗體) 及 編輯 */}
@@ -2192,7 +2192,7 @@
                                     {/* 下方約1/3: 車號 */}
                                     <div className="flex items-center mt-auto pt-1">
                                         <div className="text-[12px] sm:text-[14px] font-black flex items-center whitespace-nowrap">
-                                            <Truck size={12} className="mr-0.5" /> {booking.cart.replace('號車', '')}
+                                            <Truck size={12} className="mr-0.5" /> {booking.cart}
                                         </div>
                                     </div>
                                 </div>
@@ -2263,12 +2263,12 @@
                             </div>
                             
                             {/* Bottom row: TA AND Cart */}
-                            <div className="flex justify-between items-end w-full mt-auto gap-1">
+                            <div className="flex justify-between items-center w-full mt-auto gap-1">
                                 <div className="text-[10px] sm:text-xs font-medium opacity-90 text-left whitespace-normal break-words leading-tight line-clamp-2 flex-1 min-w-0">
                                     {secondLine}
                                 </div>
                                 <div className="text-[12px] sm:text-[14px] font-black flex items-center justify-end whitespace-nowrap flex-shrink-0 text-gray-700 ml-auto text-right">
-                                    <Truck size={12} className="mr-0.5 flex-shrink-0" /> {booking.cart.replace('號車', '')}
+                                    <Truck size={12} className="mr-0.5 flex-shrink-0" /> {booking.cart}
                                 </div>
                             </div>
                         </div>

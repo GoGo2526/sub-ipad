@@ -1704,7 +1704,8 @@
                         key={booking.id}
                         draggable={isDraggable}
                         onDragStart={(e) => { if (isDraggable) e.dataTransfer.setData('bookingId', booking.id); }}
-                        className={`p-2 rounded border relative w-full h-full min-h-[76px] flex flex-col justify-between ${isDraggable ? 'group cursor-move hover:shadow-md cursor-pointer' : 'opacity-95'} shadow-sm transition-shadow ${themeStyles.bg} ${themeStyles.border}`}
+                        // 使用固定高度的百分比 (h-full) 來繼承外層 td 指定的高度
+                        className={`p-1.5 sm:p-2 rounded border relative w-full h-full flex flex-col justify-between ${isDraggable ? 'group cursor-move hover:shadow-md cursor-pointer' : 'opacity-95'} shadow-sm transition-shadow ${themeStyles.bg} ${themeStyles.border}`}
                         title={viewOnly ? "" : (isSystemFixed ? "固定課堂，不可調動或修改" : (booking.isConfirmed ? "點擊解除確認(需輸入管理員密碼)" : "老師/管理員：可按住拖曳以調動，或點擊編輯修改內容"))}
                     >
                         {isDraggable && (
@@ -1925,13 +1926,14 @@
                         <label className="text-sm md:text-base font-medium text-gray-700 block">
                         課節 <span className="text-blue-600 text-xs md:text-sm ml-1">(若連堂借用，教師可多選連堂節數)</span>
                         </label>
-                        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 md:gap-3">
+                        {/* 修正按鈕為純網格配置，統一寬度 */}
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 md:gap-3">
                         {PERIODS.filter(p => !p.isBreak).map(p => (
                             <button
                             key={p.id}
                             type="button"
                             onClick={() => handlePeriodToggle(p.id)}
-                            className={`w-full sm:w-auto px-1.5 py-2 md:px-5 md:py-2.5 rounded-lg border text-sm md:text-base font-medium transition-colors flex justify-center items-center ${formData.periods.includes(p.id)
+                            className={`w-full py-2.5 rounded-lg border text-sm md:text-base font-medium transition-colors flex justify-center items-center ${formData.periods.includes(p.id)
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                                 }`}
@@ -2067,7 +2069,8 @@
                                 }
                                 return (
                                 <tr key={period.id}>
-                                    <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[120px] sm:w-36 min-w-[120px] sm:min-w-[9rem]">
+                                    {/* 加入固定高度 (h-[95px] sm:h-[105px])，確保單元格方塊大小一致 */}
+                                    <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[120px] sm:w-36 min-w-[120px] sm:min-w-[9rem] h-[95px] sm:h-[105px]">
                                     <div className="font-extrabold text-base sm:text-lg mb-1 text-gray-900 whitespace-nowrap">{period.name}</div>
                                     <div className="font-bold text-sm sm:text-base text-gray-800 whitespace-nowrap">
                                         <span>{period.time}</span>
@@ -2088,7 +2091,7 @@
                                     if (isDateBlackout || (isSystemBlackout && !isAdmin && !booking)) {
                                         const remark = isDateBlackout || cellBookings.find(b => b.isSystem).remark;
                                         return (
-                                        <td key={`${wd.name}-${period.id}`} className="border border-black p-2 align-middle text-center bg-[#f5f5dc]">
+                                        <td key={`${wd.name}-${period.id}`} className="border border-black p-1 sm:p-2 align-middle text-center bg-[#f5f5dc] h-[95px] sm:h-[105px]">
                                             <span className="text-black font-extrabold text-[15px]">{remark}</span>
                                         </td>
                                         );
@@ -2097,17 +2100,20 @@
                                     return (
                                         <td
                                         key={`${wd.name}-${period.id}`}
-                                        className={`border border-black p-2 align-top transition-colors h-full ${isSystemBlackout ? 'bg-[#f5f5dc]' : ''} hover:bg-gray-50`}
+                                        // 同樣加上固定高度以確保與其餘欄位對齊
+                                        className={`border border-black p-1 sm:p-2 align-middle transition-colors h-[95px] sm:h-[105px] ${isSystemBlackout ? 'bg-[#f5f5dc]' : ''} hover:bg-gray-50`}
                                         onDragOver={(e) => { if (isAdmin || !isSystemBlackout) e.preventDefault(); }}
                                         onDrop={(e) => handleDrop(e, wd.dateStr, period.id, wd.name, cartLabel)}
                                         >
-                                        {booking ? renderBookingCard(booking, themeStyles) : (
-                                            <div className={`h-full w-full min-h-[76px] flex items-center justify-center border-2 border-transparent hover:border-dashed hover:border-gray-400 rounded transition-all text-center ${isSystemBlackout ? 'text-black' : 'text-transparent hover:text-gray-500 text-xs font-bold'}`}>
-                                            {isSystemBlackout ? (
-                                                <span className="font-extrabold text-[15px]">{cellBookings.find(b => b.isSystem).remark}</span>
-                                            ) : '可拖曳至此'}
-                                            </div>
-                                        )}
+                                        <div className="h-full w-full flex items-center justify-center">
+                                            {booking ? renderBookingCard(booking, themeStyles) : (
+                                                <div className={`h-full w-full flex items-center justify-center border-2 border-transparent hover:border-dashed hover:border-gray-400 rounded transition-all text-center ${isSystemBlackout ? 'text-black' : 'text-transparent hover:text-gray-500 text-xs font-bold'}`}>
+                                                {isSystemBlackout ? (
+                                                    <span className="font-extrabold text-[15px]">{cellBookings.find(b => b.isSystem).remark}</span>
+                                                ) : '可拖曳至此'}
+                                                </div>
+                                            )}
+                                        </div>
                                         </td>
                                     );
                                     })}
@@ -2164,7 +2170,7 @@
                     if (mode === 'duty' || mode === 'office') {
                         const isComputerRoomFixed = /^[2-6]/.test(booking.className) && booking.subject?.includes('科技');
                         return (
-                            <div key={booking.id} className={`p-1.5 sm:p-2 rounded-lg border w-full flex shadow-sm min-h-[70px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
+                            <div key={booking.id} className={`p-1.5 sm:p-2 rounded-lg border w-full flex shadow-sm h-[70px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
                                 {/* 左半邊 */}
                                 <div className="flex flex-col justify-between flex-1 pr-1 overflow-hidden">
                                     {/* 上方約2/3: 班別 (放大粗體) 及 編輯 */}
@@ -2227,7 +2233,7 @@
                     }
 
                     return (
-                        <div key={booking.id} className={`p-1.5 sm:p-2 rounded-lg border w-full flex flex-col justify-center shadow-sm min-h-[65px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
+                        <div key={booking.id} className={`p-1.5 sm:p-2 rounded-lg border w-full flex flex-col justify-center shadow-sm h-[65px] sm:h-[70px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
                             <div className="flex justify-between items-center text-[12px] sm:text-[13px] font-bold mb-0.5 space-x-1 overflow-hidden">
                                 <span className="truncate flex-1 text-left">{booking.className} {booking.subject}({booking.teacher})</span>
                                 <span className="flex items-center flex-shrink-0">
@@ -2451,7 +2457,8 @@
                                                     if (!booking) {
                                                         if (isSystemBlackout) return null;
                                                         return (
-                                                            <div key={`${cartLabel}-empty`} className="w-full rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center min-h-[65px] text-transparent select-none overflow-hidden">
+                                                            // 加入固定高度 h-[65px] sm:h-[70px]，確保空缺的位置也有一樣的空間
+                                                            <div key={`${cartLabel}-empty`} className="w-full rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center h-[65px] sm:h-[70px] mb-1 text-transparent select-none overflow-hidden">
                                                                 {cartLabel}
                                                             </div>
                                                         );

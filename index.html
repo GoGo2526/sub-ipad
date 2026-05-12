@@ -1714,15 +1714,15 @@
                         </div>
                         )}
 
-                        <div>
-                            <div className="flex justify-between items-start mb-0.5">
-                                <div className="font-bold text-[11px] sm:text-sm text-gray-800 leading-tight whitespace-normal break-words">
+                        <div className="w-full flex-1 flex flex-col min-h-0">
+                            <div className="flex justify-between items-start mb-0.5 w-full gap-1">
+                                <div className="font-bold text-[11px] sm:text-sm text-gray-800 leading-tight whitespace-normal break-words flex-1 min-w-0">
                                 {booking.className} {booking.subject}({booking.teacher})
                                 </div>
                                 
-                                <div className="flex items-center ml-1 flex-shrink-0">
+                                <div className="flex items-center flex-shrink-0">
                                     {!viewOnly && !isSystemFixed && !booking.isConfirmed && (
-                                        <span onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="cursor-pointer text-blue-700 bg-blue-100 hover:bg-blue-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10">確認</span>
+                                        <span onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="cursor-pointer text-blue-700 bg-blue-100 hover:bg-blue-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10 whitespace-nowrap">確認</span>
                                     )}
                                     {!viewOnly && !isSystemFixed && booking.isConfirmed && (
                                         <span
@@ -1747,28 +1747,28 @@
                                         <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-1 rounded whitespace-nowrap">固定</span>
                                     )}
                                     {viewOnly && (booking.isConfirmed || isSystemFixed) && (
-                                    <span className={`text-[10px] font-bold px-1 rounded whitespace-nowrap ${isSystemFixed ? 'text-purple-700 bg-purple-100' : 'text-green-600'}`}>
-                                        {isSystemFixed ? '固定' : '已確認'}
-                                    </span>
-                                )}
+                                        <span className={`text-[10px] font-bold px-1 rounded whitespace-nowrap ${isSystemFixed ? 'text-purple-700 bg-purple-100' : 'text-green-600'}`}>
+                                            {isSystemFixed ? '固定' : '已確認'}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="text-[10px] sm:text-xs text-gray-600 leading-tight whitespace-normal break-words mt-0.5 mb-0.5 w-full flex-1 min-w-0">
+                                {booking.subject?.includes('科技') && /^[2-6]/.test(booking.className)
+                                    ? `科任老師: ${booking.teacher}`
+                                    : (booking.ta === '科任老師' ? `科任老師: ${booking.teacher}` : (booking.ta === 'Issac' || booking.ta === 'Ming' ? `ITRO: ${booking.ta}` : (booking.ta === 'Stephanie' ? `ITRA: ${booking.ta}` : `TA: ${booking.ta || ''}`)))}
                             </div>
                         </div>
 
-                        <div className="text-[10px] sm:text-xs text-gray-600 leading-tight whitespace-normal break-words mt-0.5 mb-0.5">
-                            {booking.subject?.includes('科技') && /^[2-6]/.test(booking.className)
-                                ? `科任老師: ${booking.teacher}`
-                                : (booking.ta === '科任老師' ? `科任老師: ${booking.teacher}` : (booking.ta === 'Issac' || booking.ta === 'Ming' ? `ITRO: ${booking.ta}` : (booking.ta === 'Stephanie' ? `ITRA: ${booking.ta}` : `TA: ${booking.ta || ''}`)))}
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-end mt-1">
-                            <div className="text-[10px] font-bold flex items-center text-gray-500 flex-shrink-0">
-                                <Truck size={10} className="mr-0.5" /> {booking.cart}
+                        <div className="flex justify-between items-end mt-1 w-full gap-1">
+                            <div className="text-[10px] font-bold flex items-center text-gray-500 flex-shrink-0 min-w-0">
+                                <Truck size={10} className="mr-0.5 flex-shrink-0" /> <span className="truncate">{booking.cart}</span>
                             </div>
                             {!viewOnly && !isSystemFixed && !booking.isConfirmed && (
                                 <div className="flex items-center space-x-1 flex-shrink-0">
-                                    <span onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="cursor-pointer opacity-0 group-hover:opacity-100 text-white bg-green-700 hover:bg-green-800 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10">編輯</span>
-                                    <span onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(booking.id); }} className="cursor-pointer opacity-0 group-hover:opacity-100 text-red-600 bg-red-100 hover:bg-red-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10">刪除</span>
+                                    <span onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className="cursor-pointer opacity-100 lg:opacity-0 group-hover:opacity-100 text-white bg-green-700 hover:bg-green-800 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10 whitespace-nowrap">編輯</span>
+                                    <span onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(booking.id); }} className="cursor-pointer opacity-100 lg:opacity-0 group-hover:opacity-100 text-red-600 bg-red-100 hover:bg-red-200 px-1 py-0.5 rounded text-[10px] font-bold transition-all z-10 whitespace-nowrap">刪除</span>
                                 </div>
                             )}
                         </div>
@@ -2234,13 +2234,13 @@
 
                     return (
                         <div key={booking.id} className={`p-1.5 sm:p-2 rounded-lg border w-full flex flex-col justify-center shadow-sm h-[65px] sm:h-[70px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
-                            <div className="flex justify-between items-start text-[11px] sm:text-[13px] font-bold mb-0.5 space-x-1 overflow-hidden">
-                                <span className="whitespace-normal break-words leading-tight flex-1 text-left">{booking.className} {booking.subject}({booking.teacher})</span>
+                            <div className="flex justify-between items-start text-[11px] sm:text-[13px] font-bold mb-0.5 space-x-1 overflow-hidden w-full">
+                                <span className="whitespace-normal break-words leading-tight flex-1 min-w-0 text-left">{booking.className} {booking.subject}({booking.teacher})</span>
                                 <span className="flex items-center flex-shrink-0 mt-0.5">
                                     <Truck size={10} className="mr-0.5 sm:w-3 sm:h-3" /> {booking.cart}
                                 </span>
                             </div>
-                            <div className="text-[10px] sm:text-xs font-medium opacity-90 text-left whitespace-normal break-words leading-tight line-clamp-2">
+                            <div className="text-[10px] sm:text-xs font-medium opacity-90 text-left whitespace-normal break-words leading-tight line-clamp-2 flex-1 min-w-0">
                                 {secondLine}
                             </div>
                         </div>

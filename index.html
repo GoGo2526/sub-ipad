@@ -2245,10 +2245,10 @@
                                 {/* Action button / Status */}
                                 <div className="flex items-center flex-shrink-0 mt-0.5">
                                     {isSystemFixed ? (
-                                        <span className={`text-[10px] font-bold whitespace-nowrap inline-block flex-shrink-0 ${themeStyles.actionText}`}>固定</span>
+                                        <span className={`text-[11px] sm:text-[13px] font-bold whitespace-nowrap inline-block flex-shrink-0 ${themeStyles.actionText}`}>固定</span>
                                     ) : booking.isConfirmed ? (
                                         <span 
-                                            className={`text-[10px] font-bold whitespace-nowrap inline-block flex-shrink-0 cursor-pointer hover:underline ${themeStyles.actionText}`}
+                                            className={`text-[11px] sm:text-[13px] font-bold whitespace-nowrap inline-block flex-shrink-0 cursor-pointer hover:underline ${themeStyles.actionText}`}
                                             onClick={(e) => { 
                                                 e.stopPropagation(); 
                                                 if (isAdmin) {
@@ -2264,7 +2264,7 @@
                                     ) : (
                                         <span 
                                             onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} 
-                                            className={`cursor-pointer text-[10px] font-bold z-10 whitespace-nowrap flex-shrink-0 hover:underline ${themeStyles.actionText}`}
+                                            className={`cursor-pointer text-[11px] sm:text-[13px] font-bold z-10 whitespace-nowrap flex-shrink-0 hover:underline ${themeStyles.actionText}`}
                                         >
                                             編輯
                                         </span>
@@ -2616,10 +2616,13 @@
                         e.preventDefault();
                         if (!user) { showNotification('尚未登入', 'error'); return; }
                         
-                        const dateSuffix = editTargetBooking.date.substring(5);
-                        if (BLACKOUT_DATES[dateSuffix]) {
-                            showNotification(`該日期為 ${BLACKOUT_DATES[dateSuffix]}，不可安排借用！`, 'error');
-                            return;
+                        // 確保只有非循環借用（具備具體日期）才進行特殊日期的阻擋檢查
+                        if (editTargetBooking.date) {
+                            const dateSuffix = editTargetBooking.date.substring(5);
+                            if (BLACKOUT_DATES[dateSuffix]) {
+                                showNotification(`該日期為 ${BLACKOUT_DATES[dateSuffix]}，不可安排借用！`, 'error');
+                                return;
+                            }
                         }
 
                         if (!isAdmin && BLACKOUT_PERIODS[editTargetBooking.day] && BLACKOUT_PERIODS[editTargetBooking.day][editTargetBooking.period]) {
@@ -2627,17 +2630,7 @@
                             return;
                         }
 
-                        const conflict = bookings.some(b =>
-                            b.period === editTargetBooking.period &&
-                            b.cart === editTargetBooking.cart &&
-                            b.id !== editTargetBooking.id &&
-                            (b.date === editTargetBooking.date || (b.isRecurring && b.day === editTargetBooking.day))
-                        );
-
-                        if (conflict) {
-                            showNotification(`該課節的 ${editTargetBooking.cart} 已被借用！`, 'error');
-                            return;
-                        }
+                        // 已移除：在此只作安排TA的工作，不需要檢查車號是否已借出
 
                         const { id, ...updateData } = editTargetBooking;
                         try {

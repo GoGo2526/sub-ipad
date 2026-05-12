@@ -1721,7 +1721,7 @@
 
                         <div className="w-full flex-1 flex flex-col min-h-0">
                             <div className="flex justify-between items-start mb-0.5 w-full gap-1">
-                                <div className="font-bold text-[11px] sm:text-sm text-gray-800 leading-tight whitespace-normal break-words flex-1 min-w-0">
+                                <div className="font-bold text-[13px] sm:text-[16px] text-gray-800 leading-tight whitespace-normal break-words flex-1 min-w-0">
                                 {booking.className} {booking.subject}({booking.teacher})
                                 </div>
                                 
@@ -2243,12 +2243,12 @@
                     return (
                         <div key={booking.id} className={`group p-1.5 sm:p-2 rounded-lg border w-full flex flex-col justify-start shadow-sm h-[65px] sm:h-[70px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
                             {/* Top row: Class, Subject, Teacher AND Action Button */}
-                            <div className="flex justify-between items-start text-[11px] sm:text-[13px] font-bold mb-0.5 space-x-1 overflow-hidden w-full">
-                                <span className="whitespace-normal break-words leading-tight flex-1 min-w-0 text-left">
+                            <div className="flex justify-between items-start font-bold mb-0.5 space-x-1 overflow-hidden w-full">
+                                <span className="text-[13px] sm:text-[16px] whitespace-normal break-words leading-tight flex-1 min-w-0 text-left">
                                     {booking.className} {booking.subject}({booking.teacher})
                                 </span>
                                 {/* Action button / Status */}
-                                <div className="flex items-start flex-shrink-0 leading-tight text-right ml-auto">
+                                <div className="text-[11px] sm:text-[13px] flex items-start flex-shrink-0 leading-tight text-right ml-auto">
                                     {isSystemFixed ? (
                                         <span className={`whitespace-nowrap inline-block flex-shrink-0 ${themeStyles.actionText}`}>固定</span>
                                     ) : (

@@ -1730,8 +1730,8 @@
                             {!viewOnly && !isSystemFixed && !booking.isConfirmed && (
                                 <div className="flex flex-col items-end gap-0.5 sm:gap-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
                                     <div className="flex gap-1 sm:gap-2">
-                                        <span onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="cursor-pointer text-green-700 hover:underline z-10 whitespace-nowrap">確認</span>
                                         <span onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(booking.id); }} className="cursor-pointer text-red-600 hover:underline z-10 whitespace-nowrap">刪除</span>
+                                        <span onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="cursor-pointer text-green-700 hover:underline z-10 whitespace-nowrap">確認</span>
                                     </div>
                                     <span onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className={`cursor-pointer hover:underline z-10 whitespace-nowrap ${themeStyles.actionText || 'text-blue-700'}`}>編輯</span>
                                 </div>
@@ -2047,7 +2047,7 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                             <thead>
                             <tr>
-                                <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[110px] sm:w-[140px] lg:w-[160px] min-w-[110px] sm:min-w-[140px] lg:min-w-[160px] shadow-sm align-middle">
+                                <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[95px] sm:w-[120px] lg:w-[135px] min-w-[95px] sm:min-w-[120px] lg:min-w-[135px] shadow-sm align-middle">
                                     <div className="text-[14px] sm:text-[16px] lg:text-[18px] font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
                                 </th>
                                 {weekDates.map(wd => (
@@ -2078,7 +2078,7 @@
 
                                 return (
                                 <tr key={period.id}>
-                                    <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[110px] sm:w-[140px] lg:w-[160px] min-w-[110px] sm:min-w-[140px] lg:min-w-[160px]">
+                                    <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[95px] sm:w-[120px] lg:w-[135px] min-w-[95px] sm:min-w-[120px] lg:min-w-[135px]">
                                         <div className={periodNameClass}>{period.name}</div>
                                         <div className={periodTimeClass}>
                                             <span>{period.time}</span>
@@ -2385,7 +2385,7 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                         <thead>
                             <tr>
-                            <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[110px] sm:w-[140px] lg:w-[160px] min-w-[110px] sm:min-w-[140px] lg:min-w-[160px] shadow-sm align-middle">
+                            <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[95px] sm:w-[120px] lg:w-[135px] min-w-[95px] sm:min-w-[120px] lg:min-w-[135px] shadow-sm align-middle">
                                 <div className="text-[14px] sm:text-[16px] lg:text-[18px] font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
                             </th>
                             {weekDates.map(wd => (
@@ -2416,7 +2416,7 @@
 
                             return (
                                 <tr key={period.id}>
-                                <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[110px] sm:w-[140px] lg:w-[160px] min-w-[110px] sm:min-w-[140px] lg:min-w-[160px]">
+                                <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[95px] sm:w-[120px] lg:w-[135px] min-w-[95px] sm:min-w-[120px] lg:min-w-[135px]">
                                     <div className={periodNameClass}>{period.name}</div>
                                     <div className={periodTimeClass}>
                                         <span>{period.time}</span>

@@ -2179,40 +2179,34 @@
                             <div key={booking.id} className={`p-1.5 sm:p-2 rounded-lg border w-full flex shadow-sm h-[75px] sm:h-[86px] mb-1 overflow-hidden ${themeStyles.bg} ${themeStyles.border} ${themeStyles.text}`}>
                                 {/* 左半邊 */}
                                 <div className="flex flex-col justify-between flex-1 pr-1 overflow-hidden">
-                                    {/* 上方約2/3: 班別 (放大粗體) 及 編輯 */}
-                                    <div className="flex items-center space-x-1.5 overflow-hidden">
-                                        <div className="font-black text-2xl sm:text-3xl lg:text-xl xl:text-xl leading-none tracking-tight truncate">
+                                    {/* 上方: 班別 (放大粗體) 及 編輯 */}
+                                    <div className="flex items-center gap-1.5 overflow-hidden mt-0.5">
+                                        <div className="font-black text-[24px] sm:text-[28px] lg:text-[30px] leading-none tracking-tight truncate">
                                             {booking.className}
                                         </div>
                                         {mode === 'duty' && !isComputerRoomFixed && (
-                                            <span onClick={(e) => { e.stopPropagation(); setAssignWorkerTarget(booking); }} className="cursor-pointer text-blue-700 bg-blue-100 hover:bg-blue-200 px-1.5 py-0.5 rounded-sm text-[11px] font-bold transition-colors z-10 whitespace-nowrap flex-shrink-0">
+                                            <span onClick={(e) => { e.stopPropagation(); setAssignWorkerTarget(booking); }} className="cursor-pointer text-blue-700 bg-blue-100 hover:bg-blue-200 px-1.5 py-0.5 rounded text-[11px] sm:text-[12px] font-bold transition-colors z-10 whitespace-nowrap flex-shrink-0 self-center">
                                                 編輯
                                             </span>
                                         )}
                                     </div>
-                                    {/* 下方約1/3: 車號 */}
-                                    <div className="flex items-center mt-auto pt-1">
-                                        <div className="text-[12px] sm:text-[14px] font-black flex items-center whitespace-nowrap">
-                                            <Truck size={12} className="mr-0.5" /> {booking.cart}
+                                    {/* 下方: 車號 */}
+                                    <div className="flex items-center mb-0.5">
+                                        <div className="text-[13px] sm:text-[15px] font-black flex items-center whitespace-nowrap tracking-tight">
+                                            <Truck size={14} className="mr-1 flex-shrink-0" /> {booking.cart}
                                         </div>
                                     </div>
                                 </div>
                                 {/* 右半邊: 職工代號 / 電腦室 */}
-                                <div className="w-[45px] sm:w-[56px] flex-shrink-0 flex items-center justify-center border-l border-gray-300 border-opacity-40 pl-1 overflow-hidden">
+                                <div className="w-[50px] sm:w-[60px] lg:w-[65px] flex-shrink-0 flex items-center justify-center border-l border-black/10 pl-1 overflow-hidden">
                                     {booking.workerCode ? (
-                                        <span className="font-black text-3xl sm:text-[40px] text-center leading-none">
+                                        <span className="font-black text-[28px] sm:text-[34px] text-center leading-none">
                                             {booking.workerCode}
                                         </span>
                                     ) : (
-                                        <div className="relative flex items-center justify-center w-full">
-                                            {/* 隱藏的佔位符，用來撐開與職工代號相同的高度，確保表格方塊大小一致 */}
-                                            <span className="font-black text-3xl sm:text-[40px] text-center leading-none opacity-0 select-none pointer-events-none">
-                                                培
-                                            </span>
-                                            <span className="absolute font-bold text-[11px] sm:text-[13px] text-center text-gray-500 whitespace-nowrap tracking-tighter">
-                                                {isComputerRoomFixed ? "電腦室" : "未指派"}
-                                            </span>
-                                        </div>
+                                        <span className="font-bold text-[12px] sm:text-[13px] lg:text-[14px] text-center text-gray-500 whitespace-nowrap tracking-tight">
+                                            {isComputerRoomFixed ? "電腦室" : "未指派"}
+                                        </span>
                                     )}
                                 </div>
                             </div>

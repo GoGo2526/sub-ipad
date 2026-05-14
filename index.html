@@ -1730,8 +1730,8 @@
                             {!viewOnly && !isSystemFixed && !booking.isConfirmed && (
                                 <div className="flex flex-col items-end gap-0.5 sm:gap-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
                                     <div className="flex gap-1 sm:gap-2">
-                                        <span onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(booking.id); }} className="cursor-pointer text-red-600 hover:underline z-10 whitespace-nowrap">刪除</span>
                                         <span onClick={(e) => { e.stopPropagation(); confirmBooking(booking.id); }} className="cursor-pointer text-green-700 hover:underline z-10 whitespace-nowrap">確認</span>
+                                        <span onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(booking.id); }} className="cursor-pointer text-red-600 hover:underline z-10 whitespace-nowrap">刪除</span>
                                     </div>
                                     <span onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} className={`cursor-pointer hover:underline z-10 whitespace-nowrap ${themeStyles.actionText || 'text-blue-700'}`}>編輯</span>
                                 </div>

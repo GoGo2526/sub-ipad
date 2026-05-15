@@ -1786,6 +1786,23 @@
                 const nextWeek = getDateStrFromMonday(7);
                 const weekAfterNext = getDateStrFromMonday(14);
 
+                let pastWeekOptions = [];
+                if (isAdmin) {
+                    const termStart = new Date(2026, 1, 2); // 系統設定的第1週 (2026-02-02)
+                    let currentIterDate = new Date(termStart);
+                    const thisWeekDateObj = new Date(thisWeek);
+                    
+                    while (currentIterDate < thisWeekDateObj) {
+                        const iterDateStr = getLocalYYYYMMDD(currentIterDate);
+                        pastWeekOptions.push(
+                            <option key={iterDateStr} value={iterDateStr}>
+                                {generateCurrentWeekMsg(iterDateStr)}
+                            </option>
+                        );
+                        currentIterDate.setDate(currentIterDate.getDate() + 7);
+                    }
+                }
+
                 return (
                     <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm gap-2 w-full sm:w-max print-hide">
                         <div className="flex items-center">
@@ -1800,6 +1817,11 @@
                         <option value={thisWeek}>本週 - {generateCurrentWeekMsg(thisWeek)}</option>
                         <option value={nextWeek}>下週 - {generateCurrentWeekMsg(nextWeek)}</option>
                         <option value={weekAfterNext}>下下週 - {generateCurrentWeekMsg(weekAfterNext)}</option>
+                        {isAdmin && pastWeekOptions.length > 0 && (
+                            <optgroup label="過往週次 (管理員專用)">
+                                {pastWeekOptions.reverse()}
+                            </optgroup>
+                        )}
                         </select>
                         <span className="text-xs text-gray-500 block sm:inline whitespace-normal sm:whitespace-nowrap mt-1 sm:mt-0">(可預約未來兩星期的課室平板電腦)</span>
                     </div>

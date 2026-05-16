@@ -255,10 +255,6 @@
                         <span>第{getISOWeek(targetNextMonday)}週: {formatRange(targetNextMonday, nextFriday)} 及 第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
                         <span className="text-red-600 font-bold sm:ml-2">(逢星期四下午4時後將暫停下週預約)</span>
                     </div>
-                    <div className="hidden sm:flex items-center flex-wrap">
-                        <span>第{getISOWeek(targetNextMonday)}週: {formatRange(targetNextMonday, nextFriday)} 及 第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
-                        <span className="text-red-600 font-bold sm:ml-2">(逢星期四下午4時後將暫停下周預約)</span>
-                    </div>
                     </>
                 ) : (
                     <>
@@ -2364,7 +2360,7 @@
                                 >
                                     <Truck size={14} className="mr-1 sm:w-4 sm:h-4 w-3.5 h-3.5" /> 3號車
                                 </button>
-                                {mode === 'normal' && isAdmin && (
+                                {mode === 'normal' && (loginRole === 'admin' || loginRole === 'office') && (
                                     <>
                                     <button onClick={handleExportExcel} className="flex items-center px-2 py-1.5 sm:px-3 sm:py-1.5 rounded transition-colors border-2 text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 whitespace-nowrap flex-shrink-0">
                                         匯出檔案

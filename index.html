@@ -249,7 +249,11 @@
                     <div className="flex flex-col sm:hidden">
                         <span>第{getISOWeek(targetNextMonday)}週: {formatRange(targetNextMonday, nextFriday)}</span>
                         <span>第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
-                        <span className="text-red-600 font-bold text-xs mt-1">(逢星期四下午4時後將暫停下周預約)</span>
+                        <span className="text-red-600 font-bold text-xs mt-1">(逢星期四下午4時後將暫停下週預約)</span>
+                    </div>
+                    <div className="hidden sm:flex items-center flex-wrap">
+                        <span>第{getISOWeek(targetNextMonday)}週: {formatRange(targetNextMonday, nextFriday)} 及 第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
+                        <span className="text-red-600 font-bold sm:ml-2">(逢星期四下午4時後將暫停下週預約)</span>
                     </div>
                     <div className="hidden sm:flex items-center flex-wrap">
                         <span>第{getISOWeek(targetNextMonday)}週: {formatRange(targetNextMonday, nextFriday)} 及 第{getISOWeek(weekAfterNextMonday)}週: {formatRange(weekAfterNextMonday, weekAfterNextFriday)}</span>
@@ -1782,6 +1786,7 @@
             };
 
             const renderDateSelector = () => {
+                const lastWeek = getDateStrFromMonday(-7);
                 const thisWeek = getDateStrFromMonday(0);
                 const nextWeek = getDateStrFromMonday(7);
                 const weekAfterNext = getDateStrFromMonday(14);
@@ -1790,9 +1795,9 @@
                 if (isAdmin) {
                     const termStart = new Date(2026, 1, 2); // 系統設定的第1週 (2026-02-02)
                     let currentIterDate = new Date(termStart);
-                    const thisWeekDateObj = new Date(thisWeek);
+                    const lastWeekDateObj = new Date(lastWeek);
                     
-                    while (currentIterDate < thisWeekDateObj) {
+                    while (currentIterDate < lastWeekDateObj) {
                         const iterDateStr = getLocalYYYYMMDD(currentIterDate);
                         pastWeekOptions.push(
                             <option key={iterDateStr} value={iterDateStr}>
@@ -1814,6 +1819,7 @@
                         onChange={e => setViewDate(e.target.value)}
                         className="w-full sm:w-auto p-1.5 border rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-medium bg-gray-50 cursor-pointer"
                         >
+                        <option value={lastWeek}>上週 - {generateCurrentWeekMsg(lastWeek)}</option>
                         <option value={thisWeek}>本週 - {generateCurrentWeekMsg(thisWeek)}</option>
                         <option value={nextWeek}>下週 - {generateCurrentWeekMsg(nextWeek)}</option>
                         <option value={weekAfterNext}>下下週 - {generateCurrentWeekMsg(weekAfterNext)}</option>
@@ -2122,7 +2128,7 @@
                                         const remark = isDateBlackout || cellBookings.find(b => b.isSystem).remark;
                                         return (
                                         <td key={`${wd.name}-${period.id}`} className="border border-black p-1 sm:p-2 align-middle text-center bg-[#f5f5dc]">
-                                            <span className="text-black font-extrabold text-[15px]">{remark}</span>
+                                            <span className="text-black font-extrabold text-[18px] sm:text-[22px] lg:text-[26px] print:text-[15px]">{remark}</span>
                                         </td>
                                         );
                                     }
@@ -2138,7 +2144,7 @@
                                             {booking ? renderBookingCard(booking, themeStyles) : (
                                                 <div className={`w-full rounded-lg border-2 border-transparent hover:border-dashed hover:border-gray-400 flex items-center justify-center h-[75px] sm:h-[86px] transition-all text-center ${isSystemBlackout ? 'text-black' : 'text-transparent hover:text-gray-500 text-xs font-bold'}`}>
                                                 {isSystemBlackout ? (
-                                                    <span className="font-extrabold text-[15px]">{cellBookings.find(b => b.isSystem).remark}</span>
+                                                    <span className="font-extrabold text-[18px] sm:text-[22px] lg:text-[26px] print:text-[15px]">{cellBookings.find(b => b.isSystem).remark}</span>
                                                 ) : '可拖曳至此'}
                                                 </div>
                                             )}
@@ -2460,7 +2466,7 @@
                                     const remark = isDateBlackout || cellBookings.find(b => b.isSystem).remark;
                                     return (
                                         <td key={`${wd.name}-${period.id}`} className="border border-black p-1 sm:p-2 align-middle text-center bg-[#f5f5dc]">
-                                        <span className="text-black font-extrabold text-[15px]">{remark}</span>
+                                        <span className="text-black font-extrabold text-[18px] sm:text-[22px] lg:text-[26px] print:text-[15px]">{remark}</span>
                                         </td>
                                     );
                                     }
@@ -2476,7 +2482,7 @@
                                     >
                                         {isOnlySystemRemark ? (
                                             <div className={`flex items-center justify-center w-full h-full min-h-[65px] ${isAdmin ? 'border-2 border-transparent hover:border-dashed hover:border-gray-400 rounded transition-all' : ''}`}>
-                                                <span className="font-extrabold text-[15px] text-black">{cellBookings.find(b => b.isSystem).remark}</span>
+                                                <span className="font-extrabold text-[18px] sm:text-[22px] lg:text-[26px] print:text-[15px] text-black">{cellBookings.find(b => b.isSystem).remark}</span>
                                             </div>
                                         ) : (
                                             <div className="flex flex-col h-full space-y-1">

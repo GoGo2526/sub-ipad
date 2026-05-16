@@ -2071,8 +2071,8 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                             <thead>
                             <tr>
-                                <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[80px] sm:w-[100px] lg:w-[110px] min-w-[80px] sm:min-w-[100px] lg:min-w-[110px] shadow-sm align-middle">
-                                    <div className="text-[14px] sm:text-[16px] lg:text-[18px] font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
+                                <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[60px] sm:w-[75px] lg:w-[85px] min-w-[60px] sm:min-w-[75px] lg:min-w-[85px] shadow-sm align-middle">
+                                    <div className="text-[12px] sm:text-[14px] lg:text-[16px] font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
                                 </th>
                                 {weekDates.map(wd => (
                                 <th key={wd.name} className="border border-black p-1 sm:p-2 bg-blue-100 text-center text-blue-900 align-middle w-[16%] min-w-[160px] sm:min-w-[190px] lg:min-w-[210px]">
@@ -2097,12 +2097,12 @@
                                     );
                                 }
                                 
-                                let periodNameClass = "font-extrabold mb-1 sm:mb-1.5 text-gray-900 whitespace-nowrap transition-all text-[16px] sm:text-[20px] lg:text-[22px]";
-                                let periodTimeClass = "font-bold tracking-tight whitespace-nowrap leading-none text-gray-800 transition-all text-[12px] sm:text-[14px] lg:text-[16px]";
+                                let periodNameClass = "font-extrabold mb-1 sm:mb-1.5 text-gray-900 whitespace-nowrap transition-all text-[15px] sm:text-[17px] lg:text-[19px]";
+                                let periodTimeClass = "font-bold tracking-tighter whitespace-nowrap leading-none text-gray-800 transition-all text-[10px] sm:text-[12px] lg:text-[13px]";
 
                                 return (
                                 <tr key={period.id}>
-                                    <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[80px] sm:w-[100px] lg:w-[110px] min-w-[80px] sm:min-w-[100px] lg:min-w-[110px]">
+                                    <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[60px] sm:w-[75px] lg:w-[85px] min-w-[60px] sm:min-w-[75px] lg:min-w-[85px]">
                                         <div className={periodNameClass}>{period.name}</div>
                                         <div className={periodTimeClass}>
                                             <span>{period.time}</span>
@@ -2409,8 +2409,8 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                         <thead>
                             <tr>
-                            <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[80px] sm:w-[100px] lg:w-[110px] min-w-[80px] sm:min-w-[100px] lg:min-w-[110px] shadow-sm align-middle">
-                                <div className="text-[14px] sm:text-[16px] lg:text-[18px] font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
+                            <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[60px] sm:w-[75px] lg:w-[85px] min-w-[60px] sm:min-w-[75px] lg:min-w-[85px] shadow-sm align-middle">
+                                <div className="text-[12px] sm:text-[14px] lg:text-[16px] font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
                             </th>
                             {weekDates.map(wd => (
                                 <th key={wd.name} className="border border-black p-1 sm:p-2 bg-blue-100 text-center text-blue-900 align-middle w-[16%] min-w-[160px] sm:min-w-[190px] lg:min-w-[210px]">
@@ -2435,12 +2435,12 @@
                                 );
                             }
 
-                            let periodNameClass = "font-extrabold mb-1 sm:mb-1.5 text-gray-900 whitespace-nowrap transition-all text-[16px] sm:text-[20px] lg:text-[22px]";
-                            let periodTimeClass = "font-bold tracking-tight whitespace-nowrap leading-none text-gray-800 transition-all text-[12px] sm:text-[14px] lg:text-[16px]";
+                            let periodNameClass = "font-extrabold mb-1 sm:mb-1.5 text-gray-900 whitespace-nowrap transition-all text-[15px] sm:text-[17px] lg:text-[19px]";
+                            let periodTimeClass = "font-bold tracking-tighter whitespace-nowrap leading-none text-gray-800 transition-all text-[10px] sm:text-[12px] lg:text-[13px]";
 
                             return (
                                 <tr key={period.id}>
-                                <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[80px] sm:w-[100px] lg:w-[110px] min-w-[80px] sm:min-w-[100px] lg:min-w-[110px]">
+                                <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[60px] sm:w-[75px] lg:w-[85px] min-w-[60px] sm:min-w-[75px] lg:min-w-[85px]">
                                     <div className={periodNameClass}>{period.name}</div>
                                     <div className={periodTimeClass}>
                                         <span>{period.time}</span>

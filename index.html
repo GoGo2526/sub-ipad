@@ -2071,7 +2071,7 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                             <thead>
                             <tr>
-                                <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[95px] sm:w-[120px] lg:w-[135px] min-w-[95px] sm:min-w-[120px] lg:min-w-[135px] shadow-sm align-middle">
+                                <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[80px] sm:w-[100px] lg:w-[110px] min-w-[80px] sm:min-w-[100px] lg:min-w-[110px] shadow-sm align-middle">
                                     <div className="text-[14px] sm:text-[16px] lg:text-[18px] font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
                                 </th>
                                 {weekDates.map(wd => (
@@ -2102,7 +2102,7 @@
 
                                 return (
                                 <tr key={period.id}>
-                                    <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[95px] sm:w-[120px] lg:w-[135px] min-w-[95px] sm:min-w-[120px] lg:min-w-[135px]">
+                                    <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[80px] sm:w-[100px] lg:w-[110px] min-w-[80px] sm:min-w-[100px] lg:min-w-[110px]">
                                         <div className={periodNameClass}>{period.name}</div>
                                         <div className={periodTimeClass}>
                                             <span>{period.time}</span>
@@ -2409,7 +2409,7 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                         <thead>
                             <tr>
-                            <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[95px] sm:w-[120px] lg:w-[135px] min-w-[95px] sm:min-w-[120px] lg:min-w-[135px] shadow-sm align-middle">
+                            <th className="border border-black p-1 sm:p-2 bg-blue-100 text-center w-[80px] sm:w-[100px] lg:w-[110px] min-w-[80px] sm:min-w-[100px] lg:min-w-[110px] shadow-sm align-middle">
                                 <div className="text-[14px] sm:text-[16px] lg:text-[18px] font-extrabold text-blue-900 leading-tight whitespace-nowrap">節數/時間</div>
                             </th>
                             {weekDates.map(wd => (
@@ -2440,7 +2440,7 @@
 
                             return (
                                 <tr key={period.id}>
-                                <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[95px] sm:w-[120px] lg:w-[135px] min-w-[95px] sm:min-w-[120px] lg:min-w-[135px]">
+                                <td className="border border-black p-1 sm:p-2 bg-gray-200 text-center align-middle w-[80px] sm:w-[100px] lg:w-[110px] min-w-[80px] sm:min-w-[100px] lg:min-w-[110px]">
                                     <div className={periodNameClass}>{period.name}</div>
                                     <div className={periodTimeClass}>
                                         <span>{period.time}</span>
@@ -2919,8 +2919,8 @@
                     </div>
                 </header>
 
-                <div className="w-full max-w-full mx-auto mb-6 px-2 print-hide">
-                    <div className="inline-flex flex-row bg-gray-200 rounded-lg p-1 gap-1 max-w-full overflow-x-auto scrollbar-hide snap-x">
+                <div className="w-full max-w-full mx-auto mb-6 px-2 print-hide text-center">
+                    <div className="inline-flex flex-row text-left bg-gray-200 rounded-lg p-1 gap-1 max-w-full overflow-x-auto scrollbar-hide snap-x">
                     {loginRole !== 'office' && (
                         <>
                         <button

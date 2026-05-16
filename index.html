@@ -2269,14 +2269,14 @@
                                 <div className="text-[12px] sm:text-[14px] flex items-start flex-shrink-0 leading-tight text-right ml-auto font-bold">
                                     {isSystemFixed ? (
                                         <span className={`whitespace-nowrap inline-block flex-shrink-0 ${themeStyles.actionText}`}>固定</span>
-                                    ) : (
+                                    ) : isAdmin ? (
                                         <span 
                                             onClick={(e) => { e.stopPropagation(); setEditTargetBooking(booking); }} 
                                             className={`cursor-pointer z-10 whitespace-nowrap flex-shrink-0 hover:underline ${themeStyles.actionText}`}
                                         >
                                             編輯
                                         </span>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
                             

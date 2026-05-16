@@ -1519,11 +1519,22 @@
                     processJobs(cart1Jobs);
                     processJobs(cart2Jobs);
 
-                    return { cart1Jobs, cart2Jobs };
+                    // 以時間 (startPeriod) 為基準合併成列 (Row)，確保左右欄嚴格符合時間順序
+                    const dayRows = [];
+                    allPeriods.forEach(p => {
+                        const c1Job = cart1Jobs.find(j => j.startPeriod === p.id);
+                        const c2Job = cart2Jobs.find(j => j.startPeriod === p.id);
+                        // 只要該時段 1車 或 2車 有借出，就建立新的一列
+                        if (c1Job || c2Job) {
+                            dayRows.push({ c1Job, c2Job });
+                        }
+                    });
+
+                    return dayRows;
                 });
 
-                // 計算最大的列數
-                const maxRows = Math.max(...daysJobs.map(d => Math.max(d.cart1Jobs.length, d.cart2Jobs.length)), 1);
+                // 計算最大的列數 (以保證 5 天的表格高度一致)
+                const maxRows = Math.max(...daysJobs.map(d => d.length), 1);
 
                 let htmlContent = `
                     <!DOCTYPE html>
@@ -1555,17 +1566,19 @@
                             .content-table tr { page-break-inside: avoid; break-inside: avoid; }
                             .content-table thead { display: table-header-group; }
                             
-                            .content-table th, .content-table td { border: 1px solid #aaa; padding: 6px; vertical-align: top; width: 10%; }
+                            .content-table th, .content-table td { padding: 6px; vertical-align: top; width: 10%; border-bottom: 1px solid #aaa; }
                             
                             /* 每日的粗線識別與灰色底色 */
                             .content-table th { background-color: #e5e7eb !important; font-size: 16px; padding: 8px; font-weight: bold; border-bottom: 3px solid black; border-left: 3px solid black; border-right: 3px solid black; text-align: center; }
-                            .day-border-left { border-left: 3px solid black !important; }
+                            .day-border-left { border-left: 3px solid black !important; border-right: 1px solid #aaa !important; }
                             .day-border-right { border-right: 3px solid black !important; }
                             
-                            .job-container { display: flex; flex-direction: column; height: 100%; min-height: 85px; }
-                            .job-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 15px; margin-bottom: 6px; }
-                            .job-time { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 4px; font-weight: normal; }
-                            .job-worker { text-align: center; font-weight: bold; font-size: 16px; margin-top: auto; padding-top: 8px; }
+                            .job-container { display: flex; flex-direction: column; height: 100%; min-height: 90px; }
+                            /* 班別與車號放大 */
+                            .job-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 20px; margin-bottom: 8px; }
+                            .job-time { display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 4px; font-weight: normal; }
+                            /* 職工代號放大 */
+                            .job-worker { text-align: center; font-weight: bold; font-size: 22px; margin-top: auto; padding-top: 8px; }
                         </style>
                     </head>
                     <body>
@@ -1609,11 +1622,10 @@
                 for (let r = 0; r < maxRows; r++) {
                     htmlContent += `<tr>`;
                     for (let d = 0; d < 5; d++) {
-                        const c1Job = daysJobs[d].cart1Jobs[r];
-                        const c2Job = daysJobs[d].cart2Jobs[r];
+                        const rowObj = daysJobs[d][r] || { c1Job: null, c2Job: null };
                         
-                        htmlContent += `<td class="day-border-left">${renderJob(c1Job)}</td>`;
-                        htmlContent += `<td class="${d === 4 ? 'day-border-right' : ''}">${renderJob(c2Job)}</td>`;
+                        htmlContent += `<td class="day-border-left">${renderJob(rowObj.c1Job)}</td>`;
+                        htmlContent += `<td class="day-border-right">${renderJob(rowObj.c2Job)}</td>`;
                     }
                     htmlContent += `</tr>`;
                 }

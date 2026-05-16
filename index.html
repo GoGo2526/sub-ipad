@@ -2055,8 +2055,8 @@
                 const weekDates = getWeekDates(viewDate);
 
                 return (
-                <div className={`mb-8 bg-white p-4 rounded-xl shadow-sm border ${themeStyles.border}`}>
-                    <h3 className={`text-lg font-bold flex flex-col sm:flex-row sm:items-center mb-4 ${themeStyles.text}`}>
+                <div className={`mb-8 bg-white p-2 sm:p-4 rounded-xl shadow-sm border ${themeStyles.border}`}>
+                    <h3 className={`text-lg font-bold flex flex-col sm:flex-row sm:items-center mb-4 px-1 sm:px-0 ${themeStyles.text}`}>
                     <div className="flex items-center">
                         <Truck className="mr-2" size={20} />
                         <span>{cartLabel} 借用紀錄表{locationText}</span>
@@ -2296,7 +2296,7 @@
                 return (
                 <div>
                     {renderDateSelector()}
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto w-full pb-4 print-overflow-visible print:p-0 print:border-none print:shadow-none">
+                    <div className="bg-white p-2 sm:p-4 lg:p-6 rounded-xl shadow-sm border border-gray-100 overflow-x-auto w-full pb-4 print-overflow-visible print:p-0 print:border-none print:shadow-none">
                     
                     {/* 只在列印時顯示的版頭 */}
                     <div className="hidden print:block w-full mb-4 px-2">
@@ -2891,14 +2891,14 @@
             }
 
             return (
-                <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8 relative print:bg-white print:p-0">
+                <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-2 md:p-4 relative print:bg-white print:p-0">
                 {renderDeleteModal()}
                 {renderRearrangeModal()}
                 {renderUnconfirmedModal()}
                 {renderUnlockModal()}
                 {renderEditModal()}
                 {renderAssignWorkerModal()}
-                <header className="max-w-[1600px] w-full mx-auto mb-6 text-center relative pt-4 sm:pt-0 print-hide">
+                <header className="w-full max-w-full mx-auto mb-4 md:mb-6 text-center relative pt-4 sm:pt-0 print-hide px-2">
                     {/* 桌面版管理員登入按鈕保持原位 */}
                     <div className="absolute right-0 top-0 sm:right-2 sm:top-2 hidden sm:block">
                         <button onClick={handleLogout} className="flex items-center text-xs sm:text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full transition-colors shadow-sm">
@@ -2917,7 +2917,7 @@
                     </div>
                 </header>
 
-                <div className="max-w-[1600px] w-full mx-auto mb-6 px-2 print-hide">
+                <div className="w-full max-w-full mx-auto mb-6 px-2 print-hide">
                     <div className="inline-flex flex-row bg-gray-200 rounded-lg p-1 gap-1 max-w-full overflow-x-auto scrollbar-hide snap-x">
                     {loginRole !== 'office' && (
                         <>
@@ -2983,7 +2983,7 @@
                     </div>
                 )}
 
-                <div className="max-w-[1600px] w-full mx-auto print:max-w-none print:w-full">
+                <div className="w-full max-w-full mx-auto px-1 sm:px-2 print:max-w-none print:w-full print:px-0">
                     {activeTab === 'form' && renderForm()}
                     {activeTab === 'records' && renderRecords()}
                     {activeTab === 'schedule' && renderSchedule('normal')}

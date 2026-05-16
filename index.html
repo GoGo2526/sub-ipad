@@ -1559,10 +1559,10 @@
                                 print-color-adjust: exact !important;
                             }
                             
-                            /* 標題與列印日期置於同一行左右對齊 */
-                            .header-container { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; margin-top: 15px; }
-                            .main-title { color: #003366; font-size: 22px; font-weight: bold; text-decoration: underline; margin: 0; }
-                            .print-date { font-size: 16px; font-weight: bold; color: #333; }
+                            /* 標題與列印日期採用 Grid 排版，確保標題絕對置中 */
+                            .header-container { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; margin-bottom: 15px; margin-top: 15px; }
+                            .main-title { grid-column: 2; color: #000; font-size: 24px; font-weight: bold; margin: 0; text-align: center; }
+                            .print-date { grid-column: 3; font-size: 14px; font-weight: bold; color: #333; text-align: right; }
                             
                             /* 外層控制上下邊界 (15mm) 的 Table，利用 thead/tfoot 在每一頁重複的特性來模擬上下邊距 */
                             .page-spacing-table { width: 100%; border: none; border-collapse: collapse; }
@@ -1571,21 +1571,28 @@
                             .page-spacing-table > tbody > tr > td { border: none; padding: 0; background: transparent; }
 
                             /* 內部內容表格與換頁控制 */
-                            .content-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; border: 3px solid black; }
+                            .content-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; border: 2px solid black; }
                             .content-table tr { page-break-inside: avoid; break-inside: avoid; }
                             .content-table thead { display: table-header-group; }
                             
-                            .content-table th, .content-table td { padding: 6px; vertical-align: top; width: 10%; border-bottom: 1px solid #aaa; }
+                            .content-table th, .content-table td { padding: 4px 6px; vertical-align: top; width: 10%; border: 1px solid #000; }
                             
                             /* 每日的粗線識別與灰色底色 */
-                            .content-table th { background-color: #e5e7eb !important; font-size: 16px; padding: 8px; font-weight: bold; border-bottom: 3px solid black; border-left: 3px solid black; border-right: 3px solid black; text-align: center; }
-                            .day-border-left { border-left: 3px solid black !important; border-right: 1px solid #aaa !important; }
-                            .day-border-right { border-right: 3px solid black !important; border-left: 1px solid #aaa !important; }
+                            .content-table th { background-color: #f3f4f6 !important; font-size: 16px; padding: 8px; font-weight: bold; border: 2px solid black; text-align: center; }
+                            .day-border-left { border-left: 2px solid black !important; }
+                            .day-border-right { border-right: 2px solid black !important; }
                             
                             .job-container { display: flex; flex-direction: column; height: 100%; min-height: 90px; }
-                            /* 加入 align-items: center 確保班別與車號置中對齊 */
-                            .job-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 20px; margin-bottom: 8px; }
-                            .job-time { display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 4px; font-weight: normal; }
+                            
+                            /* 使用 Flex 佈局及固定寬度強制上下完美對齊 */
+                            .job-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+                            .col-left { text-align: left; flex: 1; }
+                            .col-right { text-align: right; width: 35px; flex-shrink: 0; }
+                            
+                            .job-class { font-weight: bold; font-size: 20px; }
+                            .job-cart { font-weight: bold; font-size: 20px; }
+                            .job-time-val { font-size: 15px; }
+                            .job-time-act { font-size: 15px; }
                             .job-worker { text-align: center; font-weight: bold; font-size: 22px; margin-top: auto; padding-top: 8px; }
                         </style>
                     </head>
@@ -1594,6 +1601,7 @@
                             <thead><tr><td></td></tr></thead>
                             <tbody><tr><td>
                                 <div class="header-container">
+                                    <div></div> <!-- 佔位用 -->
                                     <h1 class="main-title">每週平板電腦運送安排總表 (${generateCurrentWeekMsg(viewDate)})</h1>
                                     <div class="print-date">列印日期: ${printDateFormatted}</div>
                                 </div>
@@ -1610,17 +1618,17 @@
                     if (!job) return '';
                     return `
                         <div class="job-container">
-                            <div class="job-header">
-                                <span>${job.className}</span>
-                                <span>${job.shortCart}</span>
+                            <div class="job-row">
+                                <div class="col-left job-class">${job.className}</div>
+                                <div class="col-right job-cart">${job.shortCart}</div>
                             </div>
-                            <div class="job-time">
-                                <span>${job.startTime}</span>
-                                <span>送</span>
+                            <div class="job-row">
+                                <div class="col-left job-time-val">${job.startTime}</div>
+                                <div class="col-right job-time-act">送</div>
                             </div>
-                            <div class="job-time">
-                                <span>${job.endTime}</span>
-                                <span>收</span>
+                            <div class="job-row">
+                                <div class="col-left job-time-val">${job.endTime}</div>
+                                <div class="col-right job-time-act">收</div>
                             </div>
                             <div class="job-worker">
                                 ${job.workerCode || ''}

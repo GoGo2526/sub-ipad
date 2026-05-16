@@ -1586,8 +1586,8 @@
                             /* 減少方塊高度以容納更多列 */
                             .job-container { display: flex; flex-direction: column; height: 100%; min-height: 60px; }
                             
-                            /* 使用 Flex 佈局及固定寬度強制上下完美對齊，壓縮行距 */
-                            .job-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0px; line-height: 1.1; }
+                            /* 使用 Flex 佈局及固定寬度強制上下完美對齊，壓縮行距後微調列距 */
+                            .job-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.15; }
                             .col-left { text-align: left; flex: 1; }
                             .col-right { text-align: right; width: 35px; flex-shrink: 0; }
                             
@@ -1595,7 +1595,10 @@
                             .job-cart { font-weight: bold; font-size: 20px; }
                             .job-time-val { font-size: 15px; }
                             .job-time-act { font-size: 15px; }
-                            .job-worker { text-align: center; font-weight: bold; font-size: 22px; margin-top: auto; padding-top: 2px; line-height: 1; }
+                            .job-worker { text-align: center; font-weight: bold; font-size: 22px; margin-top: auto; padding-top: 6px; line-height: 1; }
+                            
+                            /* 奶黃色底色 */
+                            .bg-creamy-yellow { background-color: #fffde7 !important; }
                         </style>
                     </head>
                     <body>
@@ -1639,13 +1642,19 @@
                     `;
                 };
 
+                const getBgClass = (job) => {
+                    if (!job) return '';
+                    if (job.cart === '2號車' || job.cart === '3號車') return 'bg-creamy-yellow';
+                    return '';
+                };
+
                 for (let r = 0; r < maxRows; r++) {
                     htmlContent += `<tr>`;
                     for (let d = 0; d < 5; d++) {
                         const rowObj = daysJobs[d][r] || { c1Job: null, c2Job: null };
                         
-                        htmlContent += `<td class="day-border-left">${renderJob(rowObj.c1Job)}</td>`;
-                        htmlContent += `<td class="day-border-right">${renderJob(rowObj.c2Job)}</td>`;
+                        htmlContent += `<td class="day-border-left ${getBgClass(rowObj.c1Job)}">${renderJob(rowObj.c1Job)}</td>`;
+                        htmlContent += `<td class="day-border-right ${getBgClass(rowObj.c2Job)}">${renderJob(rowObj.c2Job)}</td>`;
                     }
                     htmlContent += `</tr>`;
                 }

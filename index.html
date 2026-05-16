@@ -1179,154 +1179,157 @@
             };
 
             const handlePrintListFormat = () => {
-                const weekDates = getWeekDates(viewDate);
-                const currentMondayStr = weekDates[0].dateStr;
-                const d = new Date();
-                const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
-                const weekMsg = generateCurrentWeekMsg(viewDate);
+                // 將繁重的字串生成處理推遲至非同步執行，避免阻塞按鈕點擊事件，解決卡頓問題
+                setTimeout(() => {
+                    const weekDates = getWeekDates(viewDate);
+                    const currentMondayStr = weekDates[0].dateStr;
+                    const d = new Date();
+                    const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
+                    const weekMsg = generateCurrentWeekMsg(viewDate);
 
-                const formatDateDMY = (dateStr) => {
-                    const parts = dateStr.split('-');
-                    return `${parseInt(parts[2])}-${parseInt(parts[1])}-${parts[0]}`;
-                };
+                    const formatDateDMY = (dateStr) => {
+                        const parts = dateStr.split('-');
+                        return `${parseInt(parts[2])}-${parseInt(parts[1])}-${parts[0]}`;
+                    };
 
-                let htmlContent = `
-                    <!DOCTYPE html>
-                    <html lang="zh-HK">
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>平板電腦借用清單列印</title>
-                        <style>
-                            /* 設定 A4 直印版面與 Margin 0 以隱藏瀏覽器預設頁首頁尾 */
-                            @page { size: A4 portrait; margin: 0; }
-                            body { 
-                                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-                                padding: 0 15mm; /* 只設定左右邊界 15mm */
-                                -webkit-print-color-adjust: exact !important; 
-                                print-color-adjust: exact !important;
-                                margin: 0;
-                            }
-                            .main-title { color: #003366; font-size: 20px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
-                            .sub-title { font-size: 16px; margin-bottom: 20px; }
-                            
-                            /* 外層控制上下邊界 (15mm) 的 Table，利用 thead/tfoot 在每一頁重複的特性來模擬邊距 */
-                            .page-spacing-table { width: 100%; border: none; border-collapse: collapse; }
-                            .page-spacing-table > thead > tr > td, 
-                            .page-spacing-table > tfoot > tr > td { height: 15mm; border: none; padding: 0; background: transparent; }
-                            .page-spacing-table > tbody > tr > td { border: none; padding: 0; background: transparent; }
+                    let htmlContent = `
+                        <!DOCTYPE html>
+                        <html lang="zh-HK">
+                        <head>
+                            <meta charset="UTF-8">
+                            <title>平板電腦借用清單列印</title>
+                            <style>
+                                /* 設定 A4 直印版面與 Margin 0 以隱藏瀏覽器預設頁首頁尾 */
+                                @page { size: A4 portrait; margin: 0; }
+                                body { 
+                                    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+                                    padding: 0 15mm; /* 只設定左右邊界 15mm */
+                                    -webkit-print-color-adjust: exact !important; 
+                                    print-color-adjust: exact !important;
+                                    margin: 0;
+                                }
+                                .main-title { color: #003366; font-size: 20px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
+                                .sub-title { font-size: 16px; margin-bottom: 20px; }
+                                
+                                /* 外層控制上下邊界 (15mm) 的 Table，利用 thead/tfoot 在每一頁重複的特性來模擬邊距 */
+                                .page-spacing-table { width: 100%; border: none; border-collapse: collapse; }
+                                .page-spacing-table > thead > tr > td, 
+                                .page-spacing-table > tfoot > tr > td { height: 15mm; border: none; padding: 0; background: transparent; }
+                                .page-spacing-table > tbody > tr > td { border: none; padding: 0; background: transparent; }
 
-                            /* 內部內容表格與換頁控制 */
-                            .content-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; }
-                            .content-table tr { page-break-inside: avoid; break-inside: avoid; }
-                            .content-table thead { display: table-header-group; } /* 確保表頭在換頁時自動重複 */
-                            
-                            .content-table th, .content-table td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
-                            .content-table .header-row th { background-color: #CCE5FF; font-weight: bold; border: 1px solid black; }
-                            .cart-2 { background-color: #E2EFDA !important; } /* 2號車專屬綠底 */
-                            
-                            .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; width: 100%; }
-                            .date-text { font-size: 18px; font-weight: bold; color: black; text-align: left; }
-                            .print-date { font-size: 12px; color: black; font-weight: normal; }
-                        </style>
-                    </head>
-                    <body>
-                        <table class="page-spacing-table">
-                            <thead><tr><td></td></tr></thead>
-                            <tbody><tr><td>
-                                <div class="main-title">觀塘官立小學(秀明道)</div>
-                                <div class="sub-title">平板電腦借用清單 (${weekMsg})</div>
-                `;
-
-                let isFirstDay = true;
-                weekDates.forEach(wd => {
-                    const dayBookings = bookings.filter(b => 
-                        !b.isSystem && 
-                        ['1號車', '2號車'].includes(b.cart) &&
-                        visibleCarts.includes(b.cart) && 
-                        (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
-                    );
-
-                    if (dayBookings.length === 0) return;
-
-                    // 將日期標題放入 thead 內，當表格跨頁時，整個 thead (包含日期) 都會在下一頁頂部重複印出
-                    htmlContent += `
-                        <table class="content-table">
-                            <thead>
-                                <tr>
-                                    <th colspan="7" style="border: none; background: transparent; padding: 0 0 5px 0;">
-                                        <div class="date-header">
-                                            <div class="date-text">日期：${formatDateDMY(wd.dateStr)} (${wd.name})</div>
-                                            <div class="print-date">${isFirstDay ? `列印日期: ${printDateFormatted}` : ''}</div>
-                                        </div>
-                                    </th>
-                                </tr>
-                                <tr class="header-row">
-                                    <th style="width: 10%;">節數</th>
-                                    <th style="width: 15%;">時間</th>
-                                    <th style="width: 15%;">車號</th>
-                                    <th style="width: 15%;">班別</th>
-                                    <th style="width: 15%;">科目</th>
-                                    <th style="width: 15%;">教師代號</th>
-                                    <th style="width: 15%;">負責老師 / TA</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                                /* 內部內容表格與換頁控制 */
+                                .content-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; }
+                                .content-table tr { page-break-inside: avoid; break-inside: avoid; }
+                                .content-table thead { display: table-header-group; } /* 確保表頭在換頁時自動重複 */
+                                
+                                .content-table th, .content-table td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
+                                .content-table .header-row th { background-color: #CCE5FF; font-weight: bold; border: 1px solid black; }
+                                .cart-2 { background-color: #E2EFDA !important; } /* 2號車專屬綠底 */
+                                
+                                .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; width: 100%; }
+                                .date-text { font-size: 18px; font-weight: bold; color: black; text-align: left; }
+                                .print-date { font-size: 12px; color: black; font-weight: normal; }
+                            </style>
+                        </head>
+                        <body>
+                            <table class="page-spacing-table">
+                                <thead><tr><td></td></tr></thead>
+                                <tbody><tr><td>
+                                    <div class="main-title">觀塘官立小學(秀明道)</div>
+                                    <div class="sub-title">平板電腦借用清單 (${weekMsg})</div>
                     `;
-                    isFirstDay = false;
 
-                    PERIODS.forEach(period => {
-                        if (period.isBreak) return;
-                        const periodBookings = dayBookings.filter(b => b.period === period.id);
-                        if (periodBookings.length === 0) return;
+                    let isFirstDay = true;
+                    weekDates.forEach(wd => {
+                        const dayBookings = bookings.filter(b => 
+                            !b.isSystem && 
+                            ['1號車', '2號車'].includes(b.cart) &&
+                            visibleCarts.includes(b.cart) && 
+                            (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
+                        );
 
-                        periodBookings.sort((a, b) => a.cart.localeCompare(b.cart));
+                        if (dayBookings.length === 0) return;
 
-                        periodBookings.forEach(booking => {
-                            const taStr = booking.ta === '科任老師' ? `科任老師: ${booking.teacher}` : (booking.ta || '');
-                            const rowClass = booking.cart === '2號車' ? 'cart-2' : '';
-                            const actualTime = weekHalfDays[currentMondayStr]?.[wd.dateStr] ? (HALF_DAY_TIMES[period.id] || period.time) : period.time;
-                            htmlContent += `
-                                <tr class="${rowClass}">
-                                    <td>${period.name}</td>
-                                    <td>${actualTime}</td>
-                                    <td>${booking.cart}</td>
-                                    <td>${booking.className}</td>
-                                    <td>${booking.subject}</td>
-                                    <td>${booking.teacher}</td>
-                                    <td>${taStr}</td>
-                                </tr>
-                            `;
+                        // 將日期標題放入 thead 內，當表格跨頁時，整個 thead (包含日期) 都會在下一頁頂部重複印出
+                        htmlContent += `
+                            <table class="content-table">
+                                <thead>
+                                    <tr>
+                                        <th colspan="7" style="border: none; background: transparent; padding: 0 0 5px 0;">
+                                            <div class="date-header">
+                                                <div class="date-text">日期：${formatDateDMY(wd.dateStr)} (${wd.name})</div>
+                                                <div class="print-date">${isFirstDay ? `列印日期: ${printDateFormatted}` : ''}</div>
+                                            </div>
+                                        </th>
+                                    </tr>
+                                    <tr class="header-row">
+                                        <th style="width: 10%;">節數</th>
+                                        <th style="width: 15%;">時間</th>
+                                        <th style="width: 15%;">車號</th>
+                                        <th style="width: 15%;">班別</th>
+                                        <th style="width: 15%;">科目</th>
+                                        <th style="width: 15%;">教師代號</th>
+                                        <th style="width: 15%;">負責老師 / TA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                        `;
+                        isFirstDay = false;
+
+                        PERIODS.forEach(period => {
+                            if (period.isBreak) return;
+                            const periodBookings = dayBookings.filter(b => b.period === period.id);
+                            if (periodBookings.length === 0) return;
+
+                            periodBookings.sort((a, b) => a.cart.localeCompare(b.cart));
+
+                            periodBookings.forEach(booking => {
+                                const taStr = booking.ta === '科任老師' ? `科任老師: ${booking.teacher}` : (booking.ta || '');
+                                const rowClass = booking.cart === '2號車' ? 'cart-2' : '';
+                                const actualTime = weekHalfDays[currentMondayStr]?.[wd.dateStr] ? (HALF_DAY_TIMES[period.id] || period.time) : period.time;
+                                htmlContent += `
+                                    <tr class="${rowClass}">
+                                        <td>${period.name}</td>
+                                        <td>${actualTime}</td>
+                                        <td>${booking.cart}</td>
+                                        <td>${booking.className}</td>
+                                        <td>${booking.subject}</td>
+                                        <td>${booking.teacher}</td>
+                                        <td>${taStr}</td>
+                                    </tr>
+                                `;
+                            });
                         });
+
+                        htmlContent += `
+                                </tbody>
+                            </table>
+                        `;
                     });
 
                     htmlContent += `
-                            </tbody>
-                        </table>
+                                </td></tr></tbody>
+                                <tfoot><tr><td></td></tr></tfoot>
+                            </table>
+                        </body>
+                        </html>
                     `;
-                });
 
-                htmlContent += `
-                            </td></tr></tbody>
-                            <tfoot><tr><td></td></tr></tfoot>
-                        </table>
-                    </body>
-                    </html>
-                `;
-
-                const printWindow = window.open('', '_blank');
-                if (printWindow) {
-                    printWindow.document.open();
-                    printWindow.document.write(htmlContent);
-                    printWindow.document.close();
-                    
-                    printWindow.onload = function() {
-                        printWindow.setTimeout(function() {
+                    const printWindow = window.open('', '_blank');
+                    if (printWindow) {
+                        printWindow.document.open();
+                        printWindow.document.write(htmlContent);
+                        printWindow.document.close();
+                        
+                        // 移除依賴 onload 事件，改用定時器，避免沒有外部資源時 onload 不觸發導致的卡頓現象
+                        setTimeout(function() {
+                            printWindow.focus();
                             printWindow.print();
-                        }, 300);
-                    };
-                } else {
-                    showNotification('無法開啟列印視窗，請確認瀏覽器是否允許彈出視窗 (Pop-ups)。', 'error');
-                }
+                        }, 500);
+                    } else {
+                        showNotification('無法開啟列印視窗，請確認瀏覽器是否允許彈出視窗 (Pop-ups)。', 'error');
+                    }
+                }, 50); // 延遲50毫秒執行，讓按鈕點擊UI可以先完成更新
             };
 
             const handleExportOfficeExcel = async () => {
@@ -1455,228 +1458,231 @@
             };
 
             const handlePrintOfficeFormat = () => {
-                const weekDates = getWeekDates(viewDate);
-                const currentMondayStr = weekDates[0].dateStr;
-                const allPeriods = PERIODS.filter(p => !p.isBreak);
+                // 將繁重的字串生成處理推遲至非同步執行，避免阻塞按鈕點擊事件，解決卡頓問題
+                setTimeout(() => {
+                    const weekDates = getWeekDates(viewDate);
+                    const currentMondayStr = weekDates[0].dateStr;
+                    const allPeriods = PERIODS.filter(p => !p.isBreak);
 
-                const d = new Date();
-                const printDateFormatted = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+                    const d = new Date();
+                    const printDateFormatted = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
 
-                // 將課堂依日期、車號合併連續節次，並轉換為排版所需的工作區塊
-                const daysJobs = weekDates.map(wd => {
-                    const dayBookings = bookings.filter(b => 
-                        !b.isSystem && 
-                        (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
-                    );
+                    // 將課堂依日期、車號合併連續節次，並轉換為排版所需的工作區塊
+                    const daysJobs = weekDates.map(wd => {
+                        const dayBookings = bookings.filter(b => 
+                            !b.isSystem && 
+                            (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
+                        );
 
-                    // 依據條件篩選各車資料：1號車、2號車、3號車(非科技課)
-                    const cart1Raw = dayBookings.filter(b => b.cart === '1號車');
-                    const cart2Raw = dayBookings.filter(b => b.cart === '2號車');
-                    const cart3Raw = dayBookings.filter(b => b.cart === '3號車' && !b.subject?.includes('科技'));
+                        // 依據條件篩選各車資料：1號車、2號車、3號車(非科技課)
+                        const cart1Raw = dayBookings.filter(b => b.cart === '1號車');
+                        const cart2Raw = dayBookings.filter(b => b.cart === '2號車');
+                        const cart3Raw = dayBookings.filter(b => b.cart === '3號車' && !b.subject?.includes('科技'));
 
-                    // 合併連續課節的處理函數
-                    const processCartJobs = (cartBookings) => {
-                        const jobsList = [];
-                        cartBookings.sort((a, b) => a.period - b.period);
-                        let currentJob = null;
-                        cartBookings.forEach(b => {
-                            const pIdx = allPeriods.findIndex(p => p.id === b.period);
-                            if (!currentJob) {
-                                currentJob = { ...b, startPeriod: b.period, endPeriod: b.period };
-                                jobsList.push(currentJob);
-                            } else {
-                                const prevIdx = allPeriods.findIndex(p => p.id === currentJob.endPeriod);
-                                // 判斷是否為連續課堂（同班、同車、同職工）
-                                if (pIdx === prevIdx + 1 && b.className === currentJob.className && b.workerCode === currentJob.workerCode && b.cart === currentJob.cart) {
-                                    currentJob.endPeriod = b.period;
-                                } else {
+                        // 合併連續課節的處理函數
+                        const processCartJobs = (cartBookings) => {
+                            const jobsList = [];
+                            cartBookings.sort((a, b) => a.period - b.period);
+                            let currentJob = null;
+                            cartBookings.forEach(b => {
+                                const pIdx = allPeriods.findIndex(p => p.id === b.period);
+                                if (!currentJob) {
                                     currentJob = { ...b, startPeriod: b.period, endPeriod: b.period };
                                     jobsList.push(currentJob);
+                                } else {
+                                    const prevIdx = allPeriods.findIndex(p => p.id === currentJob.endPeriod);
+                                    // 判斷是否為連續課堂（同班、同車、同職工）
+                                    if (pIdx === prevIdx + 1 && b.className === currentJob.className && b.workerCode === currentJob.workerCode && b.cart === currentJob.cart) {
+                                        currentJob.endPeriod = b.period;
+                                    } else {
+                                        currentJob = { ...b, startPeriod: b.period, endPeriod: b.period };
+                                        jobsList.push(currentJob);
+                                    }
                                 }
-                            }
-                        });
-                        return jobsList;
-                    };
+                            });
+                            return jobsList;
+                        };
 
-                    const cart1Jobs = processCartJobs(cart1Raw);
-                    const cart2Jobs = processCartJobs(cart2Raw);
-                    const cart3Jobs = processCartJobs(cart3Raw);
+                        const cart1Jobs = processCartJobs(cart1Raw);
+                        const cart2Jobs = processCartJobs(cart2Raw);
+                        const cart3Jobs = processCartJobs(cart3Raw);
 
-                    // 結合 2號車 與 3號車(非科技) 至右欄，並依據開始時間排序
-                    const cart2_3Jobs = [...cart2Jobs, ...cart3Jobs].sort((a, b) => a.startPeriod - b.startPeriod);
+                        // 結合 2號車 與 3號車(非科技) 至右欄，並依據開始時間排序
+                        const cart2_3Jobs = [...cart2Jobs, ...cart3Jobs].sort((a, b) => a.startPeriod - b.startPeriod);
 
-                    // 處理真實借用/收回時間 (考慮半日上課設定)
-                    const isHalfDay = weekHalfDays[currentMondayStr]?.[wd.dateStr] || false;
-                    const processTimes = (jobs) => {
-                        jobs.forEach(job => {
-                            const getStart = (pid) => {
-                                const timeStr = isHalfDay ? (HALF_DAY_TIMES[pid] || PERIODS.find(p => p.id === pid).time) : PERIODS.find(p => p.id === pid).time;
-                                return timeStr.split('-')[0].trim();
-                            };
-                            const getEnd = (pid) => {
-                                const timeStr = isHalfDay ? (HALF_DAY_TIMES[pid] || PERIODS.find(p => p.id === pid).time) : PERIODS.find(p => p.id === pid).time;
-                                return timeStr.split('-')[1].trim();
-                            };
-                            job.startTime = getStart(job.startPeriod);
-                            job.endTime = getEnd(job.endPeriod);
-                            job.shortCart = job.cart.replace('號車', '車');
-                        });
-                    };
+                        // 處理真實借用/收回時間 (考慮半日上課設定)
+                        const isHalfDay = weekHalfDays[currentMondayStr]?.[wd.dateStr] || false;
+                        const processTimes = (jobs) => {
+                            jobs.forEach(job => {
+                                const getStart = (pid) => {
+                                    const timeStr = isHalfDay ? (HALF_DAY_TIMES[pid] || PERIODS.find(p => p.id === pid).time) : PERIODS.find(p => p.id === pid).time;
+                                    return timeStr.split('-')[0].trim();
+                                };
+                                const getEnd = (pid) => {
+                                    const timeStr = isHalfDay ? (HALF_DAY_TIMES[pid] || PERIODS.find(p => p.id === pid).time) : PERIODS.find(p => p.id === pid).time;
+                                    return timeStr.split('-')[1].trim();
+                                };
+                                job.startTime = getStart(job.startPeriod);
+                                job.endTime = getEnd(job.endPeriod);
+                                job.shortCart = job.cart.replace('號車', '車');
+                            });
+                        };
 
-                    processTimes(cart1Jobs);
-                    processTimes(cart2_3Jobs);
+                        processTimes(cart1Jobs);
+                        processTimes(cart2_3Jobs);
 
-                    // 獨立將兩邊的借用方塊向上對齊緊湊排列 (不需時間互相鎖定空白)
-                    const dayRows = [];
-                    const maxLen = Math.max(cart1Jobs.length, cart2_3Jobs.length);
-                    for(let i = 0; i < maxLen; i++) {
-                        dayRows.push({
-                            c1Job: cart1Jobs[i] || null,
-                            c2Job: cart2_3Jobs[i] || null
-                        });
-                    }
+                        // 獨立將兩邊的借用方塊向上對齊緊湊排列 (不需時間互相鎖定空白)
+                        const dayRows = [];
+                        const maxLen = Math.max(cart1Jobs.length, cart2_3Jobs.length);
+                        for(let i = 0; i < maxLen; i++) {
+                            dayRows.push({
+                                c1Job: cart1Jobs[i] || null,
+                                c2Job: cart2_3Jobs[i] || null
+                            });
+                        }
 
-                    return dayRows;
-                });
+                        return dayRows;
+                    });
 
-                // 計算最大的列數以確保 5 天的表格高度一致
-                const maxRows = Math.max(...daysJobs.map(d => d.length), 1);
+                    // 計算最大的列數以確保 5 天的表格高度一致
+                    const maxRows = Math.max(...daysJobs.map(d => d.length), 1);
 
-                let htmlContent = `
-                    <!DOCTYPE html>
-                    <html lang="zh-HK">
-                    <head>
-                        <meta charset="UTF-8">
-                        <title>每週平板電腦運送安排總表</title>
-                        <style>
-                            /* 設定 A4 橫印，並強制 margin: 0 隱藏瀏覽器預設頁首、頁碼及網址 */
-                            @page { size: A4 landscape; margin: 0; }
-                            body { 
-                                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-                                padding: 0 15mm; /* 以 padding 替代 margin 確保內容不會貼齊紙張邊緣 */
-                                margin: 0;
-                                -webkit-print-color-adjust: exact !important; 
-                                print-color-adjust: exact !important;
-                            }
-                            
-                            /* 標題與列印日期採用 Grid 排版，確保標題絕對置中 (減少垂直留白) */
-                            .header-container { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; margin-bottom: 6px; margin-top: 8px; }
-                            .main-title { grid-column: 2; color: #000; font-size: 24px; font-weight: bold; margin: 0; text-align: center; }
-                            .print-date { grid-column: 3; font-size: 14px; font-weight: bold; color: #333; text-align: right; }
-                            
-                            /* 外層控制上下邊界 (縮減為 5mm 以增加同一頁顯示量) 的 Table */
-                            .page-spacing-table { width: 100%; border: none; border-collapse: collapse; }
-                            .page-spacing-table > thead > tr > td, 
-                            .page-spacing-table > tfoot > tr > td { height: 5mm; border: none; padding: 0; background: transparent; }
-                            .page-spacing-table > tbody > tr > td { border: none; padding: 0; background: transparent; }
+                    let htmlContent = `
+                        <!DOCTYPE html>
+                        <html lang="zh-HK">
+                        <head>
+                            <meta charset="UTF-8">
+                            <title>每週平板電腦運送安排總表</title>
+                            <style>
+                                /* 設定 A4 橫印，並強制 margin: 0 隱藏瀏覽器預設頁首、頁碼及網址 */
+                                @page { size: A4 landscape; margin: 0; }
+                                body { 
+                                    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+                                    padding: 0 15mm; /* 以 padding 替代 margin 確保內容不會貼齊紙張邊緣 */
+                                    margin: 0;
+                                    -webkit-print-color-adjust: exact !important; 
+                                    print-color-adjust: exact !important;
+                                }
+                                
+                                /* 標題與列印日期採用 Grid 排版，確保標題絕對置中 (減少垂直留白) */
+                                .header-container { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; margin-bottom: 6px; margin-top: 8px; }
+                                .main-title { grid-column: 2; color: #000; font-size: 24px; font-weight: bold; margin: 0; text-align: center; }
+                                .print-date { grid-column: 3; font-size: 14px; font-weight: bold; color: #333; text-align: right; }
+                                
+                                /* 外層控制上下邊界 (縮減為 5mm 以增加同一頁顯示量) 的 Table */
+                                .page-spacing-table { width: 100%; border: none; border-collapse: collapse; }
+                                .page-spacing-table > thead > tr > td, 
+                                .page-spacing-table > tfoot > tr > td { height: 5mm; border: none; padding: 0; background: transparent; }
+                                .page-spacing-table > tbody > tr > td { border: none; padding: 0; background: transparent; }
 
-                            /* 內部內容表格與換頁控制 */
-                            .content-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; page-break-inside: auto; border: 2px solid black; }
-                            .content-table tr { page-break-inside: avoid; break-inside: avoid; }
-                            .content-table thead { display: table-header-group; }
-                            
-                            /* 壓縮儲存格 Padding */
-                            .content-table th, .content-table td { padding: 2px 4px; vertical-align: top; width: 10%; border: 1px solid #000; }
-                            
-                            /* 每日的粗線識別與灰色底色 */
-                            .content-table th { background-color: #f3f4f6 !important; font-size: 16px; padding: 4px; font-weight: bold; border: 2px solid black; text-align: center; }
-                            .day-border-left { border-left: 2px solid black !important; }
-                            .day-border-right { border-right: 2px solid black !important; }
-                            
-                            /* 減少方塊高度以容納更多列 */
-                            .job-container { display: flex; flex-direction: column; height: 100%; min-height: 60px; }
-                            
-                            /* 使用 Flex 佈局及固定寬度強制上下完美對齊，壓縮行距後微調列距 */
-                            .job-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.15; }
-                            .col-left { text-align: left; flex: 1; }
-                            .col-right { text-align: right; width: 35px; flex-shrink: 0; }
-                            
-                            .job-class { font-weight: bold; font-size: 20px; }
-                            .job-cart { font-weight: bold; font-size: 20px; }
-                            .job-time-val { font-size: 15px; }
-                            .job-time-act { font-size: 15px; }
-                            .job-worker { text-align: center; font-weight: bold; font-size: 22px; margin-top: auto; padding-top: 6px; line-height: 1; }
-                            
-                            /* 奶黃色底色 */
-                            .bg-creamy-yellow { background-color: #fffde7 !important; }
-                        </style>
-                    </head>
-                    <body>
-                        <table class="page-spacing-table">
-                            <thead><tr><td></td></tr></thead>
-                            <tbody><tr><td>
-                                <div class="header-container">
-                                    <div></div> <!-- 佔位用 -->
-                                    <h1 class="main-title">每週平板電腦運送安排總表 (${generateCurrentWeekMsg(viewDate)})</h1>
-                                    <div class="print-date">列印日期: ${printDateFormatted}</div>
-                                </div>
-                                <table class="content-table">
-                                    <thead>
-                                        <tr>
-                                            ${weekDates.map(wd => `<th colspan="2">${wd.display}(${wd.name})</th>`).join('')}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                `;
-
-                const renderJob = (job) => {
-                    if (!job) return '';
-                    return `
-                        <div class="job-container">
-                            <div class="job-row">
-                                <div class="col-left job-class">${job.className}</div>
-                                <div class="col-right job-cart">${job.shortCart}</div>
-                            </div>
-                            <div class="job-row">
-                                <div class="col-left job-time-val">${job.startTime}</div>
-                                <div class="col-right job-time-act">送</div>
-                            </div>
-                            <div class="job-row">
-                                <div class="col-left job-time-val">${job.endTime}</div>
-                                <div class="col-right job-time-act">收</div>
-                            </div>
-                            <div class="job-worker">
-                                ${job.workerCode || ''}
-                            </div>
-                        </div>
+                                /* 內部內容表格與換頁控制 */
+                                .content-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; page-break-inside: auto; border: 2px solid black; }
+                                .content-table tr { page-break-inside: avoid; break-inside: avoid; }
+                                .content-table thead { display: table-header-group; }
+                                
+                                /* 壓縮儲存格 Padding */
+                                .content-table th, .content-table td { padding: 2px 4px; vertical-align: top; width: 10%; border: 1px solid #000; }
+                                
+                                /* 每日的粗線識別與灰色底色 */
+                                .content-table th { background-color: #f3f4f6 !important; font-size: 16px; padding: 4px; font-weight: bold; border: 2px solid black; text-align: center; }
+                                .day-border-left { border-left: 2px solid black !important; }
+                                .day-border-right { border-right: 2px solid black !important; }
+                                
+                                /* 減少方塊高度以容納更多列 */
+                                .job-container { display: flex; flex-direction: column; height: 100%; min-height: 60px; }
+                                
+                                /* 使用 Flex 佈局及固定寬度強制上下完美對齊，壓縮行距後微調列距 */
+                                .job-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; line-height: 1.15; }
+                                .col-left { text-align: left; flex: 1; }
+                                .col-right { text-align: right; width: 35px; flex-shrink: 0; }
+                                
+                                .job-class { font-weight: bold; font-size: 20px; }
+                                .job-cart { font-weight: bold; font-size: 20px; }
+                                .job-time-val { font-size: 15px; }
+                                .job-time-act { font-size: 15px; }
+                                .job-worker { text-align: center; font-weight: bold; font-size: 22px; margin-top: auto; padding-top: 6px; line-height: 1; }
+                                
+                                /* 奶黃色底色 */
+                                .bg-creamy-yellow { background-color: #fffde7 !important; }
+                            </style>
+                        </head>
+                        <body>
+                            <table class="page-spacing-table">
+                                <thead><tr><td></td></tr></thead>
+                                <tbody><tr><td>
+                                    <div class="header-container">
+                                        <div></div> <!-- 佔位用 -->
+                                        <h1 class="main-title">每週平板電腦運送安排總表 (${generateCurrentWeekMsg(viewDate)})</h1>
+                                        <div class="print-date">列印日期: ${printDateFormatted}</div>
+                                    </div>
+                                    <table class="content-table">
+                                        <thead>
+                                            <tr>
+                                                ${weekDates.map(wd => `<th colspan="2">${wd.display}(${wd.name})</th>`).join('')}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
                     `;
-                };
 
-                for (let r = 0; r < maxRows; r++) {
-                    htmlContent += `<tr>`;
-                    for (let d = 0; d < 5; d++) {
-                        const rowObj = daysJobs[d][r] || { c1Job: null, c2Job: null };
-                        
-                        htmlContent += `<td class="day-border-left">${renderJob(rowObj.c1Job)}</td>`;
-                        htmlContent += `<td class="day-border-right bg-creamy-yellow">${renderJob(rowObj.c2Job)}</td>`;
-                    }
-                    htmlContent += `</tr>`;
-                }
-
-                htmlContent += `
-                                    </tbody>
-                                </table>
-                            </td></tr></tbody>
-                            <tfoot><tr><td></td></tr></tfoot>
-                        </table>
-                    </body>
-                    </html>
-                `;
-
-                const printWindow = window.open('', '_blank');
-                if (printWindow) {
-                    printWindow.document.open();
-                    printWindow.document.write(htmlContent);
-                    printWindow.document.close();
-                    
-                    printWindow.onload = function() {
-                        printWindow.setTimeout(function() {
-                            printWindow.print();
-                        }, 300);
+                    const renderJob = (job) => {
+                        if (!job) return '';
+                        return `
+                            <div class="job-container">
+                                <div class="job-row">
+                                    <div class="col-left job-class">${job.className}</div>
+                                    <div class="col-right job-cart">${job.shortCart}</div>
+                                </div>
+                                <div class="job-row">
+                                    <div class="col-left job-time-val">${job.startTime}</div>
+                                    <div class="col-right job-time-act">送</div>
+                                </div>
+                                <div class="job-row">
+                                    <div class="col-left job-time-val">${job.endTime}</div>
+                                    <div class="col-right job-time-act">收</div>
+                                </div>
+                                <div class="job-worker">
+                                    ${job.workerCode || ''}
+                                </div>
+                            </div>
+                        `;
                     };
-                } else {
-                    showNotification('無法開啟列印視窗，請確認瀏覽器是否允許彈出視窗 (Pop-ups)。', 'error');
-                }
+
+                    for (let r = 0; r < maxRows; r++) {
+                        htmlContent += `<tr>`;
+                        for (let d = 0; d < 5; d++) {
+                            const rowObj = daysJobs[d][r] || { c1Job: null, c2Job: null };
+                            
+                            htmlContent += `<td class="day-border-left">${renderJob(rowObj.c1Job)}</td>`;
+                            htmlContent += `<td class="day-border-right bg-creamy-yellow">${renderJob(rowObj.c2Job)}</td>`;
+                        }
+                        htmlContent += `</tr>`;
+                    }
+
+                    htmlContent += `
+                                        </tbody>
+                                    </table>
+                                </td></tr></tbody>
+                                <tfoot><tr><td></td></tr></tfoot>
+                            </table>
+                        </body>
+                        </html>
+                    `;
+
+                    const printWindow = window.open('', '_blank');
+                    if (printWindow) {
+                        printWindow.document.open();
+                        printWindow.document.write(htmlContent);
+                        printWindow.document.close();
+                        
+                        // 移除依賴 onload 事件，改用定時器，避免沒有外部資源時 onload 不觸發導致的卡頓現象
+                        setTimeout(function() {
+                            printWindow.focus();
+                            printWindow.print();
+                        }, 500);
+                    } else {
+                        showNotification('無法開啟列印視窗，請確認瀏覽器是否允許彈出視窗 (Pop-ups)。', 'error');
+                    }
+                }, 50); // 延遲50毫秒執行，讓按鈕點擊UI可以先完成更新
             };
 
             const handleLogin = (e) => {

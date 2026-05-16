@@ -1457,135 +1457,144 @@
             const handlePrintOfficeFormat = () => {
                 const weekDates = getWeekDates(viewDate);
                 const currentMondayStr = weekDates[0].dateStr;
-                const d = new Date();
-                const printDateFormatted = `${d.getDate()}-${d.getMonth() + 1}-${d.getFullYear()}`;
-                const weekMsg = generateCurrentWeekMsg(viewDate);
+                const allPeriods = PERIODS.filter(p => !p.isBreak);
 
-                const formatDateDMY = (dateStr) => {
-                    const parts = dateStr.split('-');
-                    return `${parseInt(parts[2])}-${parseInt(parts[1])}-${parts[0]}`;
-                };
+                // 將課堂依日期、車號合併連續節次，並轉換為排版所需的工作區塊
+                const daysJobs = weekDates.map(wd => {
+                    const dayBookings = bookings.filter(b => 
+                        !b.isSystem && 
+                        visibleCarts.includes(b.cart) && 
+                        (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
+                    );
+
+                    const jobs = [];
+                    visibleCarts.forEach(cart => {
+                        const cartBookings = dayBookings.filter(b => b.cart === cart);
+                        cartBookings.sort((a, b) => a.period - b.period);
+
+                        let currentJob = null;
+                        cartBookings.forEach(b => {
+                            const pIdx = allPeriods.findIndex(p => p.id === b.period);
+                            if (!currentJob) {
+                                currentJob = { ...b, startPeriod: b.period, endPeriod: b.period };
+                                jobs.push(currentJob);
+                            } else {
+                                const prevIdx = allPeriods.findIndex(p => p.id === currentJob.endPeriod);
+                                // 判斷是否為連續課堂（同班、同車、同職工）
+                                if (pIdx === prevIdx + 1 && b.className === currentJob.className && b.workerCode === currentJob.workerCode) {
+                                    currentJob.endPeriod = b.period;
+                                } else {
+                                    currentJob = { ...b, startPeriod: b.period, endPeriod: b.period };
+                                    jobs.push(currentJob);
+                                }
+                            }
+                        });
+                    });
+
+                    // 處理真實借用/收回時間 (考慮半日上課設定)
+                    const isHalfDay = weekHalfDays[currentMondayStr]?.[wd.dateStr] || false;
+                    jobs.forEach(job => {
+                        const getStart = (pid) => {
+                            const timeStr = isHalfDay ? (HALF_DAY_TIMES[pid] || PERIODS.find(p => p.id === pid).time) : PERIODS.find(p => p.id === pid).time;
+                            return timeStr.split('-')[0].trim();
+                        };
+                        const getEnd = (pid) => {
+                            const timeStr = isHalfDay ? (HALF_DAY_TIMES[pid] || PERIODS.find(p => p.id === pid).time) : PERIODS.find(p => p.id === pid).time;
+                            return timeStr.split('-')[1].trim();
+                        };
+                        job.startTime = getStart(job.startPeriod);
+                        job.endTime = getEnd(job.endPeriod);
+                    });
+
+                    // 依照開始時間排序
+                    jobs.sort((a, b) => a.startPeriod - b.startPeriod);
+
+                    // 兩兩一組裝入陣列 (因應圖片中一格內有兩排)
+                    const chunks = [];
+                    for (let i = 0; i < jobs.length; i += 2) {
+                        chunks.push([jobs[i], jobs[i+1]]);
+                    }
+                    return chunks;
+                });
+
+                // 計算最大的列數
+                const maxRows = Math.max(...daysJobs.map(d => d.length), 1);
 
                 let htmlContent = `
                     <!DOCTYPE html>
                     <html lang="zh-HK">
                     <head>
                         <meta charset="UTF-8">
-                        <title>平板電腦職工推車安排列印</title>
+                        <title>運送平板電腦時間表</title>
                         <style>
-                            /* 設定 A4 直印版面與 Margin 0 以隱藏瀏覽器預設頁首頁尾 */
-                            @page { size: A4 portrait; margin: 0; }
+                            /* 設定 A4 橫印，並強制 margin: 0 隱藏瀏覽器預設頁首、頁碼及網址 */
+                            @page { size: A4 landscape; margin: 0; }
                             body { 
                                 font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-                                padding: 0 15mm; /* 只設定左右邊界 15mm */
+                                padding: 10mm; /* 以 padding 替代 margin 確保內容不會貼齊紙張邊緣 */
+                                margin: 0;
                                 -webkit-print-color-adjust: exact !important; 
                                 print-color-adjust: exact !important;
-                                margin: 0;
                             }
-                            .main-title { color: #003366; font-size: 20px; font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
-                            .sub-title { font-size: 16px; margin-bottom: 20px; }
-                            
-                            /* 外層控制上下邊界 (15mm) 的 Table，利用 thead/tfoot 在每一頁重複的特性來模擬邊距 */
-                            .page-spacing-table { width: 100%; border: none; border-collapse: collapse; }
-                            .page-spacing-table > thead > tr > td, 
-                            .page-spacing-table > tfoot > tr > td { height: 15mm; border: none; padding: 0; background: transparent; }
-                            .page-spacing-table > tbody > tr > td { border: none; padding: 0; background: transparent; }
-
-                            /* 內部內容表格與換頁控制 */
-                            .content-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; page-break-inside: auto; }
-                            .content-table tr { page-break-inside: avoid; break-inside: avoid; }
-                            .content-table thead { display: table-header-group; } /* 確保表頭在換頁時自動重複 */
-                            
-                            .content-table th, .content-table td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
-                            .content-table .header-row th { background-color: #CCE5FF; font-weight: bold; border: 1px solid black; }
-                            .cart-2 { background-color: #E2EFDA !important; } /* 2號車專屬綠底 */
-                            
-                            .date-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; width: 100%; }
-                            .date-text { font-size: 18px; font-weight: bold; color: black; text-align: left; }
-                            .print-date { font-size: 12px; color: black; font-weight: normal; }
+                            h1 { text-align: center; font-size: 24px; margin-bottom: 20px; font-weight: bold; }
+                            table { width: 100%; border-collapse: collapse; border: 2px solid black; }
+                            th, td { border: 1px solid black; padding: 4px; vertical-align: top; width: 10%; }
+                            th { text-align: center; font-size: 16px; padding: 8px; font-weight: normal; }
+                            .job-container { display: flex; flex-direction: column; height: 100%; min-height: 80px; }
+                            .job-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+                            .job-time { display: flex; justify-content: space-between; font-size: 13px; line-height: 1.4; }
+                            .job-worker { text-align: center; font-weight: bold; font-size: 16px; margin-top: auto; padding-top: 5px; min-height: 18px; }
                         </style>
                     </head>
                     <body>
-                        <table class="page-spacing-table">
-                            <thead><tr><td></td></tr></thead>
-                            <tbody><tr><td>
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                    <div>
-                                        <div class="main-title">觀塘官立小學(秀明道)</div>
-                                        <div class="sub-title">平板電腦職工推車安排 (${weekMsg})</div>
-                                    </div>
-                                    <div style="font-size: 20px; font-weight: bold; color: #003366; text-align: right; margin-top: 2px;">
-                                        ${visibleCarts.length > 0 ? `(${visibleCarts.join(',')})` : '(無指定車號)'}
-                                    </div>
-                                </div>
-                `;
-
-                let isFirstDay = true;
-                weekDates.forEach(wd => {
-                    const dayBookings = bookings.filter(b => 
-                        !b.isSystem && 
-                        ['1號車', '2號車'].includes(b.cart) &&
-                        visibleCarts.includes(b.cart) && 
-                        (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
-                    );
-
-                    if (dayBookings.length === 0) return;
-
-                    // 將日期標題放入 thead 內，當表格跨頁時，整個 thead (包含日期) 都會在下一頁頂部重複印出
-                    htmlContent += `
-                        <table class="content-table">
+                        <h1>運送平板電腦時間表</h1>
+                        <table>
                             <thead>
                                 <tr>
-                                    <th colspan="5" style="border: none; background: transparent; padding: 0 0 5px 0;">
-                                        <div class="date-header">
-                                            <div class="date-text">日期：${formatDateDMY(wd.dateStr)} (${wd.name})</div>
-                                            <div class="print-date">${isFirstDay ? `列印日期: ${printDateFormatted}` : ''}</div>
-                                        </div>
-                                    </th>
-                                </tr>
-                                <tr class="header-row">
-                                    <th style="width: 15%;">節數</th>
-                                    <th style="width: 25%;">時間</th>
-                                    <th style="width: 15%;">車號</th>
-                                    <th style="width: 20%;">班別</th>
-                                    <th style="width: 25%;">負責職工</th>
+                                    ${weekDates.map(wd => `<th colspan="2">${wd.display} (${wd.name})</th>`).join('')}
                                 </tr>
                             </thead>
                             <tbody>
-                    `;
-                    isFirstDay = false;
+                `;
 
-                    PERIODS.forEach(period => {
-                        if (period.isBreak) return;
-                        const periodBookings = dayBookings.filter(b => b.period === period.id);
-                        if (periodBookings.length === 0) return;
-
-                        periodBookings.sort((a, b) => a.cart.localeCompare(b.cart));
-
-                        periodBookings.forEach(booking => {
-                            const rowClass = booking.cart === '2號車' ? 'cart-2' : '';
-                            const actualTime = weekHalfDays[currentMondayStr]?.[wd.dateStr] ? (HALF_DAY_TIMES[period.id] || period.time) : period.time;
-                            htmlContent += `
-                                <tr class="${rowClass}">
-                                    <td>${period.name}</td>
-                                    <td>${actualTime}</td>
-                                    <td>${booking.cart}</td>
-                                    <td>${booking.className}</td>
-                                    <td>${booking.workerCode || ''}</td>
-                                </tr>
-                            `;
-                        });
-                    });
-
-                    htmlContent += `
-                            </tbody>
-                        </table>
-                    `;
-                });
+                for (let r = 0; r < maxRows; r++) {
+                    htmlContent += `<tr>`;
+                    for (let d = 0; d < 5; d++) {
+                        const chunk = daysJobs[d][r] || [];
+                        for (let c = 0; c < 2; c++) {
+                            const job = chunk[c];
+                            if (job) {
+                                htmlContent += `
+                                    <td>
+                                        <div class="job-container">
+                                            <div class="job-header">
+                                                <span>${job.className}</span>
+                                                <span>${job.cart.replace('號', '')}</span>
+                                            </div>
+                                            <div class="job-time">
+                                                <span>${job.startTime}</span>
+                                                <span>送</span>
+                                            </div>
+                                            <div class="job-time">
+                                                <span>${job.endTime}</span>
+                                                <span>收</span>
+                                            </div>
+                                            <div class="job-worker">
+                                                ${job.workerCode || ''}
+                                            </div>
+                                        </div>
+                                    </td>
+                                `;
+                            } else {
+                                htmlContent += `<td></td>`; // 空白區塊
+                            }
+                        }
+                    }
+                    htmlContent += `</tr>`;
+                }
 
                 htmlContent += `
-                            </td></tr></tbody>
-                            <tfoot><tr><td></td></tr></tfoot>
+                            </tbody>
                         </table>
                     </body>
                     </html>

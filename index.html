@@ -1093,10 +1093,13 @@
                 // 3. 處理清單資料 (每日一個表格)
                 let isFirstDay = true;
                 weekDates.forEach(wd => {
-                    // 篩選當天的借用紀錄，只包含1號車和2號車(排除3號車)，排除系統佔用
+                    // 篩選當天的借用紀錄，包含1號車和2號車，若選擇3號車則排除系統科技課
                     const dayBookings = bookings.filter(b => 
                         !b.isSystem && 
-                        ['1號車', '2號車'].includes(b.cart) &&
+                        (
+                            ['1號車', '2號車'].includes(b.cart) ||
+                            (b.cart === '3號車' && !b.subject?.includes('科技'))
+                        ) &&
                         visibleCarts.includes(b.cart) && 
                         (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
                     );
@@ -1244,7 +1247,10 @@
                     weekDates.forEach(wd => {
                         const dayBookings = bookings.filter(b => 
                             !b.isSystem && 
-                            ['1號車', '2號車'].includes(b.cart) &&
+                            (
+                                ['1號車', '2號車'].includes(b.cart) ||
+                                (b.cart === '3號車' && !b.subject?.includes('科技'))
+                            ) &&
                             visibleCarts.includes(b.cart) && 
                             (b.date === wd.dateStr || (b.isRecurring && b.day === wd.name))
                         );
@@ -2151,7 +2157,7 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                             <thead>
                             <tr>
-                                <th className="border border-black p-1 sm:p-1.5 lg:p-2 bg-blue-100 text-center w-[76px] sm:w-[80px] md:w-[96px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[96px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[96px] lg:max-w-[90px] shadow-sm align-middle">
+                                <th className="border border-black p-1 sm:p-1.5 lg:p-2 bg-blue-100 text-center w-[76px] sm:w-[80px] md:w-[115px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[115px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[115px] lg:max-w-[90px] shadow-sm align-middle">
                                     <div className="text-[11px] sm:text-[13px] lg:text-[15px] font-extrabold text-blue-900 leading-tight whitespace-nowrap tracking-tighter">節數/時間</div>
                                 </th>
                                 {weekDates.map(wd => (
@@ -2182,7 +2188,7 @@
 
                                 return (
                                 <tr key={period.id}>
-                                    <td className="border border-black p-1 sm:p-1.5 bg-gray-200 text-center align-middle w-[76px] sm:w-[80px] md:w-[96px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[96px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[96px] lg:max-w-[90px]">
+                                    <td className="border border-black p-1 sm:p-1.5 bg-gray-200 text-center align-middle w-[76px] sm:w-[80px] md:w-[115px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[115px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[115px] lg:max-w-[90px]">
                                         <div className={periodNameClass}>{period.name}</div>
                                         <div className={periodTimeClass}>
                                             <span>{period.time}</span>
@@ -2489,7 +2495,7 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                         <thead>
                             <tr>
-                            <th className="border border-black p-1 sm:p-1.5 lg:p-2 bg-blue-100 text-center w-[76px] sm:w-[80px] md:w-[96px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[96px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[96px] lg:max-w-[90px] shadow-sm align-middle">
+                            <th className="border border-black p-1 sm:p-1.5 lg:p-2 bg-blue-100 text-center w-[76px] sm:w-[80px] md:w-[115px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[115px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[115px] lg:max-w-[90px] shadow-sm align-middle">
                                 <div className="text-[11px] sm:text-[13px] lg:text-[15px] font-extrabold text-blue-900 leading-tight whitespace-nowrap tracking-tighter">節數/時間</div>
                             </th>
                             {weekDates.map(wd => (
@@ -2520,7 +2526,7 @@
 
                             return (
                                 <tr key={period.id}>
-                                <td className="border border-black p-1 sm:p-1.5 bg-gray-200 text-center align-middle w-[76px] sm:w-[80px] md:w-[96px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[96px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[96px] lg:max-w-[90px]">
+                                <td className="border border-black p-1 sm:p-1.5 bg-gray-200 text-center align-middle w-[76px] sm:w-[80px] md:w-[115px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[115px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[115px] lg:max-w-[90px]">
                                     <div className={periodNameClass}>{period.name}</div>
                                     <div className={periodTimeClass}>
                                         <span>{period.time}</span>

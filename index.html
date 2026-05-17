@@ -848,26 +848,26 @@
                         }
 
                         // 檢查指定車號是否被佔用
-                        const conflict = bookings.some(b => 
-                            !b.isSystem && 
-                            b.period === pid && 
-                            b.cart === formData.cart && 
-                            (b.date === formData.date || (b.isRecurring && b.day === formData.day))
-                        );
-                        if (conflict) {
-                            showNotification(`借用失敗：您指定的 ${formData.cart} 於第${pid}節已被借用。`, 'error');
-                            return;
-                        }
-                    }
-
-                    // 檢查 3號車 特定條件
-                    if (formData.cart === '3號車' && !(/^[2-6]/.test(formData.className) && formData.subject.includes('科技'))) {
-                        showNotification('借用失敗：3號車僅限 2-6年級科技課 使用！', 'error');
+                    const conflict = bookings.some(b => 
+                        !b.isSystem && 
+                        b.period === pid && 
+                        b.cart === formData.cart && 
+                        (b.date === formData.date || (b.isRecurring && b.day === formData.day))
+                    );
+                    if (conflict) {
+                        showNotification(`借用失敗：您指定的 ${formData.cart} 於第${pid}節已被借用。`, 'error');
                         return;
                     }
+                }
 
-                    let assignments = {};
-                    for (let pid of formData.periods) {
+                // 檢查 3號車 特定條件 (管理員豁免)
+                if (!isAdmin && formData.cart === '3號車' && !(/^[2-6]/.test(formData.className) && formData.subject.includes('科技'))) {
+                    showNotification('借用失敗：3號車僅限 2-6年級科技課 使用！', 'error');
+                    return;
+                }
+
+                let assignments = {};
+                for (let pid of formData.periods) {
                         assignments[pid] = formData.cart;
                     }
                     const plan = { success: true, assignments, rearrangements: [] };
@@ -944,7 +944,7 @@
 
                 const cartToCheck = targetCart || booking.cart;
 
-                if (cartToCheck === '3號車') {
+                if (!isAdmin && cartToCheck === '3號車') {
                     const isGrade2To6Tech = /^[2-6]/.test(booking.className) && booking.subject.includes('科技');
                     if (!isGrade2To6Tech) {
                         showNotification('調動失敗：3號車僅限 2-6年級科技課 使用！', 'error');

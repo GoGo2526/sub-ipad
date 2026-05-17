@@ -823,15 +823,18 @@
                         return;
                     }
 
-                    const duplicateTeacherBooking = bookings.find(b => 
-                        !b.isSystem && 
-                        b.period === pid && 
-                        b.teacher === formData.teacher &&
-                        (b.date === formData.date || (b.isRecurring && b.day === formData.day))
-                    );
-                    if (duplicateTeacherBooking) {
-                        showNotification(`借用失敗：教師 ${formData.teacher} 於第${pid}節已預約了 ${duplicateTeacherBooking.className} 班，不能在同一節重複借用。`, 'error');
-                        return;
+                    // 若教師代號為「導師」，則允許同一節重複借用
+                    if (formData.teacher !== '導師') {
+                        const duplicateTeacherBooking = bookings.find(b => 
+                            !b.isSystem && 
+                            b.period === pid && 
+                            b.teacher === formData.teacher &&
+                            (b.date === formData.date || (b.isRecurring && b.day === formData.day))
+                        );
+                        if (duplicateTeacherBooking) {
+                            showNotification(`借用失敗：教師 ${formData.teacher} 於第${pid}節已預約了 ${duplicateTeacherBooking.className} 班，不能在同一節重複借用。`, 'error');
+                            return;
+                        }
                     }
                 }
 

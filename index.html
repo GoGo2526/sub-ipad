@@ -1197,10 +1197,11 @@
                         <html lang="zh-HK">
                         <head>
                             <meta charset="UTF-8">
+                            <meta name="viewport" content="width=1024">
                             <title>平板電腦借用清單列印</title>
                             <style>
                                 /* 設定 A4 直印版面與 Margin 0 以隱藏瀏覽器預設頁首頁尾 */
-                                @page { size: A4 portrait; margin: 0; }
+                                @page { size: A4 portrait; margin: 0 !important; }
                                 body { 
                                     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
                                     padding: 0 15mm; /* 只設定左右邊界 15mm */
@@ -1552,10 +1553,11 @@
                         <html lang="zh-HK">
                         <head>
                             <meta charset="UTF-8">
+                            <meta name="viewport" content="width=1024">
                             <title>每週平板電腦運送安排總表</title>
                             <style>
                                 /* 設定 A4 橫印，並強制 margin: 0 隱藏瀏覽器預設頁首、頁碼及網址 */
-                                @page { size: A4 landscape; margin: 0; }
+                                @page { size: A4 landscape; margin: 0 !important; }
                                 body { 
                                     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
                                     padding: 0 15mm; /* 以 padding 替代 margin 確保內容不會貼齊紙張邊緣 */
@@ -2149,7 +2151,7 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                             <thead>
                             <tr>
-                                <th className="border border-black p-1 sm:p-1.5 lg:p-2 bg-blue-100 text-center w-[76px] sm:w-[80px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] lg:max-w-[90px] shadow-sm align-middle">
+                                <th className="border border-black p-1 sm:p-1.5 lg:p-2 bg-blue-100 text-center w-[76px] sm:w-[80px] md:w-[96px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[96px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[96px] lg:max-w-[90px] shadow-sm align-middle">
                                     <div className="text-[11px] sm:text-[13px] lg:text-[15px] font-extrabold text-blue-900 leading-tight whitespace-nowrap tracking-tighter">節數/時間</div>
                                 </th>
                                 {weekDates.map(wd => (
@@ -2180,7 +2182,7 @@
 
                                 return (
                                 <tr key={period.id}>
-                                    <td className="border border-black p-1 sm:p-1.5 bg-gray-200 text-center align-middle w-[76px] sm:w-[80px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] lg:max-w-[90px]">
+                                    <td className="border border-black p-1 sm:p-1.5 bg-gray-200 text-center align-middle w-[76px] sm:w-[80px] md:w-[96px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[96px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[96px] lg:max-w-[90px]">
                                         <div className={periodNameClass}>{period.name}</div>
                                         <div className={periodTimeClass}>
                                             <span>{period.time}</span>
@@ -2487,7 +2489,7 @@
                         <table className="w-full border-collapse border border-black schedule-table text-sm table-fixed min-w-[1000px] md:min-w-[1200px] xl:min-w-[1400px]">
                         <thead>
                             <tr>
-                            <th className="border border-black p-1 sm:p-1.5 lg:p-2 bg-blue-100 text-center w-[76px] sm:w-[80px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] lg:max-w-[90px] shadow-sm align-middle">
+                            <th className="border border-black p-1 sm:p-1.5 lg:p-2 bg-blue-100 text-center w-[76px] sm:w-[80px] md:w-[96px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[96px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[96px] lg:max-w-[90px] shadow-sm align-middle">
                                 <div className="text-[11px] sm:text-[13px] lg:text-[15px] font-extrabold text-blue-900 leading-tight whitespace-nowrap tracking-tighter">節數/時間</div>
                             </th>
                             {weekDates.map(wd => (
@@ -2518,7 +2520,7 @@
 
                             return (
                                 <tr key={period.id}>
-                                <td className="border border-black p-1 sm:p-1.5 bg-gray-200 text-center align-middle w-[76px] sm:w-[80px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] lg:max-w-[90px]">
+                                <td className="border border-black p-1 sm:p-1.5 bg-gray-200 text-center align-middle w-[76px] sm:w-[80px] md:w-[96px] lg:w-[90px] min-w-[76px] sm:min-w-[80px] md:min-w-[96px] lg:min-w-[90px] max-w-[76px] sm:max-w-[80px] md:max-w-[96px] lg:max-w-[90px]">
                                     <div className={periodNameClass}>{period.name}</div>
                                     <div className={periodTimeClass}>
                                         <span>{period.time}</span>
@@ -2699,6 +2701,20 @@
 
                         if (!isAdmin && BLACKOUT_PERIODS[editTargetBooking.day] && BLACKOUT_PERIODS[editTargetBooking.day][editTargetBooking.period]) {
                             showNotification('無法移至特別課堂時段！', 'error');
+                            return;
+                        }
+
+                        // 新增：檢測變更的課堂是否已被借用
+                        const conflict = bookings.some(b =>
+                            String(b.id) !== String(editTargetBooking.id) && 
+                            !b.isSystem &&
+                            b.period === editTargetBooking.period &&
+                            b.cart === editTargetBooking.cart &&
+                            (b.date === editTargetBooking.date || (b.isRecurring && b.day === editTargetBooking.day) || (editTargetBooking.isRecurring && editTargetBooking.day === b.day))
+                        );
+
+                        if (conflict) {
+                            showNotification(`儲存失敗：您指定的 ${editTargetBooking.cart} 於第${editTargetBooking.period}節已被其他班級借用！`, 'error');
                             return;
                         }
 
